@@ -1,0 +1,53 @@
+---
+name: update_server
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 1 * *"
+jobs:
+  update-server:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: "temurin"
+          java-version: "21"
+
+      - name: Set up Maven
+        uses: stCarolas/setup-maven@v5
+        with:
+          maven-version: 3.8.2
+
+      - name: Verify Node and Java
+        run: |
+          node --version
+          java -version
+          mvn --version
+
+      - name: Update artifacts
+        env:
+          GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+        run: |
+          make update
+
+      - name: Commit changes
+        env:
+          COMMIT_MSG: |
+            bump(version): Update extension artifacts
+        run: |
+          npm --no-git-tag-version version patch
+          git config user.email "actions@github"
+          git config user.name "Github Actions"
+          git add .
+          git diff --quiet && git diff --staged --quiet || (git commit -m "${COMMIT_MSG}"; git push origin HEAD:${GITHUB_REF})

@@ -1,6 +1,6 @@
 {
     "name": "coc-maven",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "description": "Coc extensions for maven",
     "author": "asmodeus812",
     "license": "MIT",
@@ -48,7 +48,7 @@
     ],
     "contributes": {
         "javaExtensions": [
-            "./jdtls.ext/com.microsoft.java.maven.plugin-0.39.0.jar"
+            "./server/com.microsoft.java.maven.plugin.jar"
         ],
         "commands": [
             {

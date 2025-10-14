@@ -25,6 +25,7 @@ export class MavenProfile implements ITreeItem {
 
     public getTreeItem(): coc.TreeItem | coc.Thenable<coc.TreeItem> {
         const treeItem: coc.TreeItem = new coc.TreeItem(this.id, coc.TreeItemCollapsibleState.None);
+        treeItem.description = `(${this.checked() ? "enabled" : "disabled"})`;
         treeItem.command = {
             title: "Goto dependency definition",
             command: "maven.explorer.profile.toggle",
