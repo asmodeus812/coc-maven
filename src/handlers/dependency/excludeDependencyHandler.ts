@@ -40,7 +40,9 @@ async function insertExcludeDependency(pomPath: string, targetNode: Element, gid
     if (targetNode.children.length === 0) {
         throw new UserError("Invalid target XML node to delete dependency.");
     }
-    const baseDocument: coc.Document = await coc.workspace.openTextDocument(coc.Uri.file(pomPath));
+    const location: coc.Uri = coc.Uri.file(pomPath);
+    await coc.commands.executeCommand("vscode.open", location);
+    const baseDocument: coc.Document = await coc.workspace.openTextDocument(location);
     const currentDocument: coc.TextDocument = baseDocument.textDocument;
     const baseIndent: string = getIndentation(currentDocument, getInnerEndIndex(targetNode));
     const textEditor: coc.TextEditor = coc.window.activeTextEditor as coc.TextEditor;

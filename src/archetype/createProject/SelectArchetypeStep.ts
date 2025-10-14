@@ -87,12 +87,9 @@ export class SelectArchetypeStep implements IProjectCreationStep {
 
     private async getRecommendedItems(allItems: Archetype[]): Promise<Archetype[]> {
         // Top popular archetypes according to usage data
-        let fixedList: string[] | undefined;
-        try {
-            fixedList = await fse.readJSON(path.join(getPathToExtensionRoot(), "resources", "popular_archetypes.json"));
-        } catch (error) {
-            console.error(error);
-        }
+        let fixedList: string[] | undefined = await fse.readJSON(
+            path.join(getPathToExtensionRoot(), "resources", "popular_archetypes.json")
+        );
         if (!fixedList) {
             return [];
         } else {

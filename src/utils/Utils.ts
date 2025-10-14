@@ -199,7 +199,7 @@ export class Utils {
         if (selected) {
             await executeInTerminal({ command: selected.command, pomfile: selected.pomPath });
         } else {
-            await window.showWarningMessage("No selection made or empty histroy");
+            await window.showWarningMessage("No selection made or histroy was empty");
         }
     }
 

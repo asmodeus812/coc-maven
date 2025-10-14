@@ -97,7 +97,9 @@ async function insertDependency(
     dependencyType?: string,
     classifier?: string
 ): Promise<void> {
-    const baseDocument: coc.Document = await coc.workspace.openTextDocument(coc.Uri.file(pomPath));
+    const location: coc.Uri = coc.Uri.file(pomPath);
+    await coc.commands.executeCommand("vscode.open", location);
+    const baseDocument: coc.Document = await coc.workspace.openTextDocument(location);
     const currentDocument: coc.TextDocument = baseDocument.textDocument;
     const baseIndent: string = getIndentation(currentDocument, getInnerEndIndex(targetNode));
     const textEditor: coc.TextEditor = coc.window.activeTextEditor as coc.TextEditor;

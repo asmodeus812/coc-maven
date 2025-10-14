@@ -113,7 +113,9 @@ async function insertDependencyManagement(
     if (targetNode === undefined) {
         throw new UserError("Invalid target XML node to insert dependency management.");
     }
-    const baseDocument: coc.Document = await coc.workspace.openTextDocument(coc.Uri.file(pomPath));
+    const location: coc.Uri = coc.Uri.file(pomPath);
+    await coc.commands.executeCommand("vscode.open", location);
+    const baseDocument: coc.Document = await coc.workspace.openTextDocument(location);
     const currentDocument: coc.TextDocument = baseDocument.textDocument;
     const textEditor: coc.TextEditor = coc.window.activeTextEditor as coc.TextEditor;
     const baseIndent: string = getIndentation(currentDocument, getInnerEndIndex(targetNode));
