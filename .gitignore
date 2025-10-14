@@ -1,0 +1,17 @@
+**/node_modules/
+.DS_Store
+target/
+bin/
+out/
+**/lib
+**/*.vsix
+.vscode-test/
+vscode-java-*.vsix
+packages/
+dist
+**/.settings
+**/.classpath
+**/.project
+**/.checkstyle
+test-resources/
+**/.gradle

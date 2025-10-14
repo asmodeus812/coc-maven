@@ -1,0 +1,28 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT license.
+
+import { readFileSync } from "fs";
+import { getPathToExtensionRoot } from "../../utils/contextUtils";
+
+/**
+ * Key: `gid:aid`
+ * Value: usage as integer
+ */
+let dict: Map<string, number>;
+
+export function getUsage(artifactId: string): number {
+    if (dict === undefined) {
+        initialize();
+    }
+    return dict.get(artifactId) ?? 0;
+}
+
+function initialize() {
+    const usageFilePath = getPathToExtensionRoot("resources", "IndexData", "ArtifactUsage.json");
+    const raw = JSON.parse(readFileSync(usageFilePath).toString());
+
+    dict = new Map();
+    for (const id of Object.keys(raw)) {
+        dict.set(id, raw[id]);
+    }
+}

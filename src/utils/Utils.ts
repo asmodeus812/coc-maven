@@ -1,0 +1,258 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT license.
+
+import { commands, Uri, window } from "coc.nvim";
+import { randomUUID } from "crypto";
+import * as fse from "fs-extra";
+import * as http from "http";
+import * as https from "https";
+import md5 from "md5";
+import * as url from "url";
+import * as xml2js from "xml2js";
+import { DEFAULT_MAVEN_LIFECYCLES } from "../completion/constants";
+import { MavenProfile } from "../explorer/model/MavenProfile";
+import { MavenProject } from "../explorer/model/MavenProject";
+import { getExtensionVersion, getPathToTempFolder, getPathToWorkspaceStorage } from "./contextUtils";
+import { MavenNotFoundError } from "./errorUtils";
+import { getLRUCommands, ICommandHistoryEntry } from "./historyUtils";
+import { executeInTerminal, getMaven, pluginDescription, rawEffectivePom } from "./mavenUtils";
+import { effectivePomContentUri, selectProjectIfNecessary } from "./uiUtils";
+
+export class Utils {
+    public static async parseXmlFile(xmlFilePath: string, options?: xml2js.OptionsV2): Promise<unknown> {
+        if (await fse.pathExists(xmlFilePath)) {
+            const xmlString: string = await fse.readFile(xmlFilePath, "utf8");
+            return Utils.parseXmlContent(xmlString, options);
+        } else {
+            return undefined;
+        }
+    }
+
+    public static async parseXmlContent(xmlString: string, options?: xml2js.OptionsV2): Promise<unknown> {
+        const opts: object = { explicitArray: true, ...options };
+        return new Promise<unknown>((resolve: (value: unknown) => void, reject: (e: Error) => void): void => {
+            xml2js.parseString(xmlString, opts, (err: Error, res: unknown) => {
+                if (err !== null) {
+                    reject(err);
+                } else {
+                    resolve(res);
+                }
+            });
+        });
+    }
+
+    static getTempOutputPath(key: string): string {
+        const pathInWorkspaceFolder: string | undefined = getPathToWorkspaceStorage(md5(key), randomUUID());
+        if (pathInWorkspaceFolder !== undefined) {
+            return pathInWorkspaceFolder;
+        } else {
+            return getPathToTempFolder(md5(key), randomUUID());
+        }
+    }
+
+    public static async downloadFile(targetUrl: string, readContent?: boolean, customHeaders?: object): Promise<string> {
+        const tempFilePath: string = Utils.getTempOutputPath(targetUrl);
+        await fse.ensureFile(tempFilePath);
+
+        return await new Promise((resolve: (res: string) => void, reject: (e: Error) => void): void => {
+            const urlObj: url.Url = url.parse(targetUrl);
+            const options: object = Object.assign(
+                { headers: Object.assign({}, customHeaders, { "User-Agent": `vscode/${getExtensionVersion()}` }) },
+                urlObj
+            );
+
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            let client: any;
+            if (urlObj.protocol === "https:") {
+                client = https;
+                // tslint:disable-next-line:no-http-string
+            } else if (urlObj.protocol === "http:") {
+                client = http;
+            } else {
+                reject(new Error("Unsupported protocol."));
+                return;
+            }
+            // tslint:disable-next-line: no-unsafe-any
+            client
+                .get(options, (res: http.IncomingMessage) => {
+                    let rawData: string;
+                    let ws: fse.WriteStream;
+                    if (readContent) {
+                        rawData = "";
+                    } else {
+                        ws = fse.createWriteStream(tempFilePath);
+                    }
+                    res.on("data", (chunk: string | Buffer) => {
+                        if (readContent) {
+                            rawData += chunk;
+                        } else {
+                            ws.write(chunk);
+                        }
+                    });
+                    res.on("end", () => {
+                        if (readContent) {
+                            resolve(rawData);
+                        } else {
+                            ws.end();
+                            resolve(tempFilePath);
+                        }
+                    });
+                })
+                .on("error", (err: Error) => {
+                    reject(err);
+                });
+        });
+    }
+
+    public static async showEffectivePom(param: Uri | MavenProject | string | undefined): Promise<void> {
+        let pomPath: string | undefined;
+        if (typeof param === "string") {
+            pomPath = param;
+        } else if (typeof param === "object" && param instanceof MavenProject) {
+            pomPath = param.pomPath;
+        } else if (typeof param === "object" && param instanceof Uri) {
+            pomPath = param.fsPath;
+        }
+        if (!pomPath) {
+            throw new Error("Corresponding pom.xml file not found.");
+        }
+
+        const mvn: string | undefined = await getMaven(pomPath);
+        if (mvn === undefined) {
+            throw new MavenNotFoundError();
+        }
+
+        const uri: Uri = effectivePomContentUri(pomPath);
+        await commands.executeCommand("maven.project.resource.open", uri);
+    }
+
+    public static async getEffectivePom(pomPathOrMavenProject: string | MavenProject): Promise<string | undefined> {
+        let pomPath: string;
+        if (typeof pomPathOrMavenProject === "object" && pomPathOrMavenProject instanceof MavenProject) {
+            const mavenProject: MavenProject = pomPathOrMavenProject;
+            pomPath = mavenProject.pomPath;
+        } else if (typeof pomPathOrMavenProject === "string") {
+            pomPath = pomPathOrMavenProject;
+        } else {
+            return undefined;
+        }
+        const task = async () => {
+            try {
+                const ret: string | undefined = await rawEffectivePom(pomPath);
+                return ret ? ret : "";
+            } catch (error) {
+                throw error;
+            }
+        };
+        return await window.withProgress({ title: "Generating effective pom..." }, task);
+    }
+
+    public static async getPluginDescription(pluginId: string, pomPath: string): Promise<string> {
+        const task = async () => {
+            try {
+                const ret: string | undefined = await pluginDescription(pluginId, pomPath);
+                return ret ? ret : "";
+            } catch (error) {
+                throw error;
+            }
+        };
+        return await window.withProgress({ title: "Obtaining plugin subscriptions..." }, task);
+    }
+
+    public static async executeCustomGoal(pomOrProject: string | MavenProject | undefined): Promise<void> {
+        let pomPath: string | undefined;
+        if (typeof pomOrProject === "string") {
+            pomPath = pomOrProject;
+        } else if (typeof pomOrProject === "object" && pomOrProject instanceof MavenProject) {
+            pomPath = pomOrProject.pomPath;
+        }
+
+        if (!pomPath) {
+            return;
+        }
+        const inputGoals: string | undefined = await window.requestInput("Enter custom goal: ", "", {
+            placeholder: "e.g. clean package -DskipTests"
+        });
+        const trimmedGoals: string | undefined = inputGoals ? inputGoals.trim() : undefined;
+        if (trimmedGoals) {
+            await executeInTerminal({ command: trimmedGoals, pomfile: pomPath });
+        }
+    }
+
+    public static async executeHistoricalGoals(projectPomPaths: string[]): Promise<void> {
+        const candidates: ICommandHistoryEntry[] = Array.prototype.concat.apply(
+            [],
+            await Promise.all(projectPomPaths.map(getLRUCommands))
+        ) as ICommandHistoryEntry[];
+        candidates.sort((a, b) => b.timestamp - a.timestamp);
+        const selected: { command: string; pomPath: string; timestamp: number } | undefined = await window
+            .showQuickPick(
+                candidates.map((item) => ({
+                    value: item,
+                    label: item.command,
+                    description: undefined,
+                    detail: item.pomPath
+                })),
+                { placeHolder: "Select from history ..." }
+            )
+            .then((item) => (item ? item.value : undefined));
+        if (selected) {
+            await executeInTerminal({ command: selected.command, pomfile: selected.pomPath });
+        } else {
+            await window.showWarningMessage("No selection made or empty histroy");
+        }
+    }
+
+    public static async executeMavenCommand(): Promise<void> {
+        let selectedProject: MavenProject | undefined;
+        let selectedCommand: string | undefined;
+        selectedProject = await selectProjectIfNecessary();
+
+        if (!selectedProject) {
+            return;
+        }
+
+        // select a command if not provided
+        if (!selectedCommand) {
+            const LABEL_CUSTOM = "Custom ...";
+            const LABEL_FAVORITES = "Favorites ...";
+            selectedCommand = await window.showQuickPick([LABEL_FAVORITES, LABEL_CUSTOM, ...DEFAULT_MAVEN_LIFECYCLES], {
+                placeHolder: "Select the goal to execute ..."
+            });
+            if (!selectedCommand) {
+                return;
+            }
+
+            switch (selectedCommand) {
+                case LABEL_CUSTOM:
+                    await commands.executeCommand("maven.goal.custom", selectedProject);
+                    return;
+                case LABEL_FAVORITES:
+                    await commands.executeCommand("maven.favorites", selectedProject);
+                    return;
+                default:
+                    break;
+            }
+        }
+        await commands.executeCommand(`maven.goal.${selectedCommand}`, selectedProject);
+    }
+
+    public static parseProfilesOutput(project: MavenProject, output: string): MavenProfile[] {
+        const profiles: MavenProfile[] = [];
+        const regexp = /Profile Id: (.*) \(Active: (true|false)\s?, Source: (.*)\)/g;
+        let match: RegExpExecArray | null;
+        do {
+            match = regexp.exec(output);
+            if (match != null && match.length === 4) {
+                const id = match[1];
+                const active = match[2] === "true";
+                const source = match[3];
+                if (!profiles.find((p) => p.id === id)) {
+                    const profile = new MavenProfile(project, id, active, source);
+                    profiles.push(profile);
+                }
+            }
+        } while (match !== null);
+        return profiles;
+    }
+}
