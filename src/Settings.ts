@@ -163,4 +163,3 @@ function _getJavaHomeEnvIfAvailable(): { [key: string]: string } {
         return {};
     }
 }
-

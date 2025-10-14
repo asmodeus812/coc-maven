@@ -1,7 +1,7 @@
 {
     "name": "coc-maven",
     "version": "0.0.1",
-    "description": "Coc extensions for maven and java",
+    "description": "Coc extensions for maven",
     "author": "asmodeus812",
     "license": "MIT",
     "main": "lib/index.js",
@@ -203,7 +203,16 @@
                                 }
                             }
                         },
-                        "default": [],
+                        "default": [
+                            {
+                                "alias": "Install without tests",
+                                "command": "install -DskipTests"
+                            },
+                            {
+                                "alias": "Build without tests",
+                                "command": "clean package -DskipTests"
+                            }
+                        ],
                         "description": "%configuration.maven.terminal.favorites%",
                         "scope": "resource"
                     },

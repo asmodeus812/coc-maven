@@ -21,32 +21,22 @@ Maven.
 
 ## Basic Usage
 
-<details open>
-<summary>Maven Explorer</summary>
+### Maven Explorer
 
 The extension scans `pom.xml` in your workspace, and displays all Maven projects
 and their modules in the sidebar.
 
-</details>
-
-<details>
-<summary>Run Plugin Goals</summary>
+### Run Plugin Goals
 
 The extension parse effective-pom of Maven projects, and displays all plugins
 and plugin goals hierarchically.
 
-</details>
-
-<details>
-<summary>POM File Editing</summary>
+### POM File Editing
 
 The extension provides Maven specific completion suggestions when editing POM
 files, including snippets and artifact hints.
 
-</details>
-
-<details>
-<summary>Re-Run Historical Commands</summary>
+### Re-Run Historical Commands
 
 It preserves history of goals for each project, so you can fast re-run previous
 long commands, e.g.
@@ -58,10 +48,7 @@ entries for it:
 - Right-click on a project -> Click `History ...` -> Select command from the
   history
 
-</details>
-
-<details>
-<summary>Archetype Related</summary>
+### Archetype Related
 
 ### Generate from Maven Archetype
 
@@ -80,12 +67,9 @@ repository.
 
 Command Palette -> select `Maven: Update Maven Archetype Catalog`.
 
-</details>
-
 ## Additional Configurations
 
-<details>
-<summary>JAVA_HOME and Other Environment Variables</summary>
+### JAVA_HOME and Other Environment Variables
 
 This extension executes Maven by opening a terminal session and then calling
 Maven in that session. Maven requires the JAVA_HOME environment variable to be
@@ -108,10 +92,7 @@ environment variable, in settings:
 }
 ```
 
-</details>
-
-<details>
-<summary>Special Handling for JAVA_HOME</summary>
+### Special Handling for JAVA_HOME
 
 If you have Red Hat's Java Language Support extension installed, then you can
 specify JAVA_HOME in settings for that extension:
@@ -138,10 +119,8 @@ If you have JAVA_HOME configured through the `maven.terminal.customEnv` setting,
 and also specify to reuse the Red Hat setting, then the value from
 `maven.terminal.customEnv` will take precedence.
 
-</details>
+### Default Options for Maven Command
 
-<details>
-<summary>Default Options for Maven Command</summary>
 The usage of Maven executable is:
 
 > usage: mvn [options] [<goal(s)>] [<phase(s)>]
@@ -155,10 +134,7 @@ your Maven commands executed in current project.
 }
 ```
 
-</details>
-
-<details>
-<summary>Folder Exclusion for Searching POM Files</summary>
+### Folder Exclusion for Searching POM Files
 
 To speed up the searching of Maven projects, you can exclude folders in
 settings:
@@ -173,10 +149,7 @@ settings:
 }
 ```
 
-</details>
-
-<details>
-<summary>Customize Favorite Maven Commands</summary>
+### Customize Favorite Maven Commands
 
 Specify a favorite command in settings:
 
@@ -193,8 +166,6 @@ Specify a favorite command in settings:
 
 Now right-click on an project item, and then click `Favorite ...`. The option
 `full-build without tests` should show up.
-
-</details>
 
 ## Settings
 
