@@ -53,47 +53,47 @@
         "commands": [
             {
                 "command": "maven.history",
-                "title": "%contributes.commands.maven.history%"
+                "title": "Open Maven Command History"
             },
             {
                 "command": "maven.archetype.generate",
-                "title": "%contributes.commands.maven.archetype.generate%"
+                "title": "Generate Project from Maven Archetype"
             },
             {
                 "command": "maven.archetype.update",
-                "title": "%contributes.commands.maven.archetype.update%"
+                "title": "Update Maven Archetype Catalog"
             },
             {
                 "command": "maven.project.effectivePom",
-                "title": "%contributes.commands.maven.project.effectivePom%"
+                "title": "Show Effective pom file"
             },
             {
                 "command": "maven.explorer.refresh",
-                "title": "%contributes.commands.maven.explorer.refresh%"
+                "title": "Refresh Maven Explorer"
             },
             {
                 "command": "maven.explorer.show",
-                "title": "%contributes.commands.maven.view.show%"
+                "title": "Show Maven Explorer"
             },
             {
                 "command": "maven.explorer.flat",
-                "title": "%contributes.commands.maven.view.flat%"
+                "title": "Switch to Flat View"
             },
             {
                 "command": "maven.explorer.hierarchical",
-                "title": "%contributes.commands.maven.view.hierarchical%"
+                "title": "Switch to Tree View"
             },
             {
                 "command": "maven.project.addDependency",
-                "title": "%contributes.commands.maven.project.addDependency%"
+                "title": "Add Dependency to pom file"
             },
             {
                 "command": "maven.project.showDependencies",
-                "title": "%contributes.commands.maven.project.showDependencies%"
+                "title": "Show Project Dependencies"
             },
             {
                 "command": "maven.project.configuration.update",
-                "title": "%contributes.commands.maven.java.projectConfiguration.update%"
+                "title": "Update Java Project Configuration"
             }
         ],
         "configuration": [
