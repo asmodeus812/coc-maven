@@ -77,12 +77,12 @@ async function parseTreeNodes(
             curIndentCnt = line.indexOf(prefix);
             curNode = toDependency(line);
             let uri: coc.Uri;
-            let curFilePath: string;
+            let currentFilePath: string;
             if (curIndentCnt === 0) {
                 curNode.root = curNode;
                 rootNode = curNode;
                 parentNode = curNode;
-                curFilePath = path.join(curNode.groupId, curNode.artifactId);
+                currentFilePath = path.join(curNode.groupId, curNode.artifactId);
             } else {
                 curNode.root = rootNode;
                 if (curIndentCnt === preIndentCnt) {
@@ -98,10 +98,10 @@ async function parseTreeNodes(
                     parentNode.addChild(curNode);
                 }
                 const parentFilePath: string = parentNode.uri?.path as string;
-                curFilePath = path.join(parentFilePath, path.join(curNode.groupId, curNode.artifactId));
+                currentFilePath = path.join(parentFilePath, path.join(curNode.groupId, curNode.artifactId));
             }
             // set uri
-            uri = coc.Uri.file(curFilePath);
+            uri = coc.Uri.file(currentFilePath);
             uri = uri.with({ authority: projectPomPath }); // distinguish dependency in multi-module project
             if (curNode.omittedStatus === undefined) {
                 curNode.uri = uri;

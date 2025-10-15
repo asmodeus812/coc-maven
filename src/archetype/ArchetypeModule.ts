@@ -154,11 +154,14 @@ async function executeInTerminalHandler(metadata: IProjectCreationMetadata): Pro
         mvnPath ??= getEmbeddedMavenWrapper();
 
         if (mvnPath === undefined) {
-            p.report({ message: "Failed to find mvn binary" });
+            p.report({ message: "Failed locating maven binary" });
             return false;
         }
         p.report({ message: "Generating project structure..." });
-        return await executeInBackground(cmdArgs.join(" "), undefined, mvnPath);
+        return await executeInBackground({
+            command: cmdArgs.join(" "),
+            mvnExecutable: mvnPath
+        });
     };
 
     await coc.window.withProgress({ title: "Creating maven project..." }, task);

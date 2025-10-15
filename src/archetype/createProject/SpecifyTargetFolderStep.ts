@@ -26,7 +26,7 @@ export class SpecifyTargetFolderStep implements IProjectCreationStep {
 
         // choose target folder.
         let result: coc.Uri | undefined = await openDialogForFolder({
-            defaultUri: metadata.targetFolderHint !== undefined ? coc.Uri.file(metadata.targetFolderHint) : undefined,
+            defaultUri: metadata.targetFolderHint !== undefined ? coc.Uri.parse(metadata.targetFolderHint) : undefined,
             openLabel: LABEL_CHOOSE_FOLDER
         });
         while (result && pathExistsSync(path.join(result.fsPath, metadata.artifactId))) {

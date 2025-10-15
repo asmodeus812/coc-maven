@@ -39,7 +39,7 @@ export async function rawEffectivePom(pomPath: string, options?: { cacheOnly?: b
         return await readFileIfExists(epomPath);
     }
 
-    await executeInBackground(`-B -Doutput="${epomPath}" help:effective-pom`, pomPath);
+    await executeInBackground({ pomFile: pomPath, command: `-B -Doutput="${epomPath}" help:effective-pom` });
     await fse.writeFile(mtimePath, mtimeMs);
     return await readFileIfExists(epomPath);
 }
@@ -49,52 +49,68 @@ export async function rawDependencyTree(pomPath: string): Promise<string | undef
     const dependencyGraphPath = `${outputPath}.deps.txt`;
     const outputDirectory: string = path.dirname(dependencyGraphPath);
     const outputFileName: string = path.basename(dependencyGraphPath);
-    await executeInBackground(
-        `-B -N ${OPTIONS_DEPENDENCY_GRAPH} -DoutputDirectory="${outputDirectory}" -DoutputFileName="${outputFileName}" ${GOAL_DEPENDENCY_GRAPH}`,
-        pomPath
-    );
+    await executeInBackground({
+        pomFile: pomPath,
+        command: `-B -N ${OPTIONS_DEPENDENCY_GRAPH} -DoutputDirectory="${outputDirectory}" -DoutputFileName="${outputFileName}" ${GOAL_DEPENDENCY_GRAPH}`
+    });
     return await readFileIfExists(path.join(outputDirectory, outputFileName));
 }
 
 export async function pluginDescription(pluginId: string, pomPath: string): Promise<string | undefined> {
     const outputPath: string = getTempFolder(pluginId);
     // For MacOSX, add "-Dapple.awt.UIElement=true" to prevent showing icons in dock
-    await executeInBackground(`-B -Dapple.awt.UIElement=true -Dplugin=${pluginId} -Doutput="${outputPath}" help:describe`, pomPath);
+    await executeInBackground({
+        pomFile: pomPath,
+        command: `-B -Dapple.awt.UIElement=true -Dplugin=${pluginId} -Doutput="${outputPath}" help:describe`
+    });
     return await readFileIfExists(outputPath);
 }
 
 export async function rawProfileList(pomPath: string): Promise<string | undefined> {
     const outputPath: string = getTempFolder(pomPath);
     const profileListPath = `${outputPath}.profiles.txt`;
-    await executeInBackground(`-B -Doutput="${profileListPath}" help:all-profiles`, pomPath);
+    await executeInBackground({
+        pomFile: pomPath,
+        command: `-B -Doutput="${profileListPath}" help:all-profiles`
+    });
     return await readFileIfExists(profileListPath);
 }
 
-export async function executeInBackground(mvnArgs: string, pomFile?: string, mvnExecutable?: string): Promise<unknown> {
-    const mvn: string | undefined = mvnExecutable || (await getMaven(pomFile));
+export async function executeInBackground(options: {
+    command: string;
+    mvnExecutable?: string;
+    pomFile?: string;
+    cwd?: string;
+    env?: { [key: string]: string };
+}): Promise<unknown> {
+    const mvn: string | undefined = options.mvnExecutable || (await getMaven(options.pomFile));
     if (mvn === undefined) {
         throw new MavenNotFoundError();
     }
 
     const command: string = wrappedWithQuotes(mvn);
-    const workspaceFolder: coc.WorkspaceFolder | undefined = pomFile ? coc.workspace.getWorkspaceFolder(coc.Uri.file(pomFile)) : undefined;
+    const workspaceFolder: coc.WorkspaceFolder | undefined =
+        !options.cwd && options.pomFile ? coc.workspace.getWorkspaceFolder(coc.Uri.file(options.pomFile)) : undefined;
+
     const cwd: string | undefined = workspaceFolder ? path.resolve(workspaceFolder.uri, mvn, "..") : undefined;
-    const userArgs: string | undefined = Settings.Executable.options(pomFile);
+    const userArgs: string | undefined = Settings.Executable.options(options.pomFile);
     const mvnSettingsFile: string | undefined = Settings.getSettingsFilePath();
     const mvnSettingsArg: string | undefined = mvnSettingsFile
         ? `-s "${await mavenTerminal.formattedPathForTerminal(mvnSettingsFile)}"`
         : undefined;
-    const matched: RegExpMatchArray | null = [mvnSettingsArg, mvnArgs, userArgs]
+
+    const matched: RegExpMatchArray | null = [mvnSettingsArg, options.command, userArgs]
         .filter(Boolean)
         .join(" ")
         .match(/(?:[^\s"]+|"[^"]*")+/g); // Split by space, but ignore spaces in quotes
+
     const args: string[] = matched ?? [];
-    if (pomFile) {
-        args.push("-f", `"${pomFile}"`);
+    if (options.pomFile) {
+        args.push("-f", `"${options.pomFile}"`);
     }
     const spawnOptions: child_process.SpawnOptions = {
-        cwd,
-        env: { ...process.env, ...Settings.getEnvironment(pomFile) },
+        cwd: options.cwd || cwd,
+        env: options.env || { ...process.env, ...Settings.getEnvironment(options.pomFile) },
         shell: true
     };
     return new Promise<unknown>((resolve: (value: unknown) => void, reject: (e: Error) => void): void => {
@@ -129,13 +145,13 @@ export async function executeInBackground(mvnArgs: string, pomFile?: string, mvn
 
 export async function executeInTerminal(options: {
     command: string;
-    mvnPath?: string;
-    pomfile?: string;
+    mvnExecutable?: string;
+    pomFile?: string;
     cwd?: string;
     env?: { [key: string]: string };
     terminalName?: string;
 }): Promise<coc.Terminal | undefined> {
-    const { command, mvnPath, pomfile, cwd, env, terminalName } = options;
+    const { command, mvnExecutable: mvnPath, pomFile: pomfile, cwd, env, terminalName } = options;
     const workspaceFolder: coc.WorkspaceFolder | undefined = pomfile ? coc.workspace.getWorkspaceFolder(coc.Uri.file(pomfile)) : undefined;
     const mvn: string | undefined = mvnPath || (await getMaven(pomfile));
     if (mvn === undefined) {

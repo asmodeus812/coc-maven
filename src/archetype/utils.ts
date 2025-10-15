@@ -9,20 +9,20 @@ const CANCEL_OPEN_WORKSPACE = "Cancel";
 export async function promptOnDidProjectCreated(projectName: string, projectFolderPath: string) {
     // Open project either is the same workspace or new workspace
     const hasOpenFolder = coc.workspace.workspaceFolders !== undefined;
-    const choice = await specifyOpenMethod(hasOpenFolder, coc.Uri.parse(projectName));
+    const choice = await specifyOpenMethod(hasOpenFolder, projectName);
     if (choice === OPEN_IN_NEW_WORKSPACE) {
-        await coc.commands.executeCommand("vscode.open", coc.Uri.file(projectFolderPath));
+        await coc.commands.executeCommand("vscode.open", coc.Uri.parse(projectFolderPath));
     }
 }
 
-async function specifyOpenMethod(hasOpenFolder: boolean, projectLocation: coc.Uri): Promise<string> {
+async function specifyOpenMethod(hasOpenFolder: boolean, projectLocation: string): Promise<string> {
     let openMethod = coc.workspace.getConfiguration("maven").get<string>("defaultOpenProjectMethod", OPEN_IN_NEW_WORKSPACE);
     if (openMethod !== CANCEL_OPEN_WORKSPACE && openMethod !== OPEN_IN_NEW_WORKSPACE) {
         let candidates: string[] = [OPEN_IN_NEW_WORKSPACE, hasOpenFolder ? CANCEL_OPEN_WORKSPACE : undefined].filter(
             (c) => c !== undefined
         );
         const result = await coc.window.showQuickPick(candidates, {
-            placeholder: `Generated at location: ${projectLocation.fsPath}`
+            placeholder: `Generated at location: ${projectLocation}`
         });
         if (result !== undefined) {
             openMethod = result;
@@ -53,7 +53,7 @@ export async function importProjectOnDemand(projectFolder: string) {
     } else if (projectImportStrategy === "manual") {
         coc.commands.executeCommand<void>(
             "java.project.changeImportedProjects",
-            [coc.Uri.file(path.join(projectFolder, "pom.xml")).toString()],
+            [coc.Uri.file(path.join(projectFolder, "pom.xml")).fsPath],
             [],
             []
         );

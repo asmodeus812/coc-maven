@@ -41,17 +41,6 @@ export class DependenciesMenu extends ProjectMenu implements ITreeItem {
     }
 
     public refresh(): void {
-        this._savePom();
         MavenExplorerProvider.getInstance().refresh(this);
-    }
-
-    private _savePom(): void {
-        const pomUri: coc.Uri = coc.Uri.file(this.project.pomPath);
-        const textEditor: coc.TextEditor | undefined = coc.window.visibleTextEditors.find(
-            (editor) => editor.document.uri.toString() === pomUri.toString()
-        );
-        if (textEditor !== undefined) {
-            // textEditor.document.save();
-        }
     }
 }

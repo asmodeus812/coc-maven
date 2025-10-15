@@ -148,7 +148,8 @@ class PluginInfoProvider {
     }
 
     private getPluginId(gid: string, aid: string, version?: string): string {
-        return `${gid}:${aid}${version ? `:${version}` : ""}`;
+        const pluginVersion = version ? `:${version}` : "";
+        return `${gid}:${aid}${pluginVersion}`;
     }
 }
 

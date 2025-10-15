@@ -115,7 +115,7 @@ export async function doActivate(context: coc.ExtensionContext): Promise<void> {
             // Reload All Maven Projects in JDTLS, impl in upstream
             coc.commands.executeCommand(
                 "java.projectConfiguration.update",
-                MavenProjectManager.projects.map((n: any) => Uri.file(n.pomPath))
+                MavenProjectManager.projects.map((project: any) => Uri.file(project.pomPath))
             );
         }
     });
@@ -138,7 +138,7 @@ export async function doActivate(context: coc.ExtensionContext): Promise<void> {
         async (pluginGoal: PluginGoal) =>
             await executeInTerminal({
                 command: pluginGoal.command,
-                pomfile: pluginGoal.plugin.project.pomPath
+                pomFile: pluginGoal.plugin.project.pomPath
             }),
         true
     );
@@ -146,7 +146,7 @@ export async function doActivate(context: coc.ExtensionContext): Promise<void> {
         registerCommand(
             context,
             `maven.explorer.phase.${goal}`,
-            async (phase: LifecyclePhase) => executeInTerminal({ command: goal, pomfile: phase.project.pomPath }),
+            async (phase: LifecyclePhase) => executeInTerminal({ command: goal, pomFile: phase.project.pomPath }),
             true
         );
     });
