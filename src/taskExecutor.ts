@@ -1,16 +1,19 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT license.
 
-import { Disposable } from "vscode";
+import { Disposable } from "coc.nvim";
 
 export class Queue<T> {
-    private _store: T[] = [];
+    private readonly _store: T[] = [];
+
     public push(val: T): void {
         this._store.push(val);
     }
+
     public pop(): T | undefined {
         return this._store.shift();
     }
+
     public empty(): boolean {
         if (this._store.length === 0) {
             return true;
@@ -20,7 +23,8 @@ export class Queue<T> {
 }
 
 class TaskExecutor implements Disposable {
-    private _tasks: Queue<CallableFunction> = new Queue();
+    private readonly _tasks: Queue<CallableFunction> = new Queue();
+
     private _isExecuting = false;
 
     public execute(task: CallableFunction): void {
@@ -45,7 +49,7 @@ class TaskExecutor implements Disposable {
         try {
             await currentTask();
         } catch (error) {
-            // ignore.
+            console.warn((error as Error).message);
         }
         this._isExecuting = false;
         this._pickAndRun().catch(console.error);

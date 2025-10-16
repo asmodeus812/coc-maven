@@ -83,7 +83,7 @@ export class FromLocal implements IArtifactCompletionProvider {
             const prefix: string = _.isEmpty(segments) ? "" : [...segments, ""].join(".");
             return Array.from(new Set(validSegments)).map((seg) => `${prefix}${seg}`);
         } catch (error) {
-            console.error(error);
+            console.error((error as Error).message);
             return [];
         }
     }
@@ -95,7 +95,7 @@ export class FromLocal implements IArtifactCompletionProvider {
             const validArtifactIds: string[] = entries.map((e: string) => e.substring(0, e.indexOf("/")));
             return Array.from(new Set(validArtifactIds));
         } catch (error) {
-            console.error(error);
+            console.error((error as Error).message);
             return [];
         }
     }
@@ -106,7 +106,7 @@ export class FromLocal implements IArtifactCompletionProvider {
             const entries = await fg(["*/*.pom"], { deep: 2, cwd });
             return entries.map((e: string) => e.substring(0, e.indexOf("/")));
         } catch (error) {
-            console.error(error);
+            console.error((error as Error).message);
             return [];
         }
     }

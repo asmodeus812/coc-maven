@@ -19,10 +19,12 @@ class DefinitionProvider implements coc.DefinitionProvider {
         const documentText: string = document.getText();
         const cursorOffset: number = document.offsetAt(position);
         const currentNode: Node | undefined = getCurrentNode(documentText, cursorOffset);
-        if (!currentNode || currentNode?.startIndex === null || currentNode?.endIndex === null) {
+        if (!currentNode || currentNode === undefined) {
             return undefined;
         }
-
+        if (currentNode?.startIndex === null || currentNode?.endIndex === null) {
+            return undefined;
+        }
         const tagNode = getEnclosingTag(currentNode);
 
         switch (tagNode?.tagName) {
@@ -78,7 +80,7 @@ function getParentDefinitionLinkFromRelativePath(parentNode: Element, document: 
         );
         const definitionLink: coc.LocationLink = {
             targetRange: coc.Range.create(0, 0, 0, 0),
-            targetUri: coc.Uri.file(parentPomPath).fsPath,
+            targetUri: coc.Uri.parse(parentPomPath).fsPath,
             originSelectionRange: originSelectionRange
         } as coc.LocationLink;
         return [definitionLink];

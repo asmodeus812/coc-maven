@@ -123,8 +123,8 @@ export class ArchetypeModule {
                 }
             });
             return Object.keys(dict).map((k: string) => dict[k]);
-        } catch (err) {
-            console.error(err);
+        } catch (error) {
+            console.error((error as Error).message);
         }
         return [];
     }

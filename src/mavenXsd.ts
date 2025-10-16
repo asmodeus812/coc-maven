@@ -14,7 +14,7 @@ export async function init() {
     try {
         schema = await fse.readJson(XSD_FILE_PATH);
     } catch (error) {
-        console.error(`failed to parse ${XSD_FILE_PATH}`, error);
+        console.error((error as Error).message);
     }
 }
 

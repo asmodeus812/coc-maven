@@ -30,7 +30,7 @@ async function excludeDependency(pomPath: string, gid: string, aid: string, root
     // find out <dependencies> node with artifactId === rootAid and insert <exclusions> node
     const dependencyNode = await getDependencyNode(pomPath, rootGid, rootAid);
     if (dependencyNode === undefined) {
-        throw new Error(`Failed to find the dependency where ${gid}:${aid} is introduced.`);
+        throw new Error(`Failed to find dependency where ${gid}:${aid} is introduced.`);
     } else {
         await insertExcludeDependency(pomPath, dependencyNode, gid, aid);
     }
@@ -38,10 +38,10 @@ async function excludeDependency(pomPath: string, gid: string, aid: string, root
 
 async function insertExcludeDependency(pomPath: string, targetNode: Element, gid: string, aid: string): Promise<void> {
     if (targetNode.children.length === 0) {
-        throw new UserError("Invalid target XML node to delete dependency.");
+        throw new UserError("Invalid XML node, unable to exclude dependency");
     }
     const location: coc.Uri = coc.Uri.file(pomPath);
-    await coc.commands.executeCommand("vscode.open", location);
+    await coc.commands.executeCommand("maven.project.resource.open", location);
     const baseDocument: coc.Document = await coc.workspace.openTextDocument(location);
     const currentDocument: coc.TextDocument = baseDocument.textDocument;
     const baseIndent: string = getIndentation(currentDocument, getInnerEndIndex(targetNode));

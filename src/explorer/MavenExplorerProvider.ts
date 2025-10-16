@@ -7,7 +7,6 @@ import { MavenProjectManager } from "../project/MavenProjectManager";
 import { Dependency } from "./model/Dependency";
 import { ITreeItem } from "./model/ITreeItem";
 import { MavenProject } from "./model/MavenProject";
-import { PluginsMenu } from "./model/PluginsMenu";
 import { WorkspaceFolder } from "./model/WorkspaceFolder";
 
 export class MavenExplorerProvider implements TreeDataProvider<ITreeItem> {
@@ -84,9 +83,6 @@ export class MavenExplorerProvider implements TreeDataProvider<ITreeItem> {
     }
 
     public refresh(item?: ITreeItem): void {
-        if (item instanceof PluginsMenu) {
-            item.project.refreshEffectivePom().catch(console.error);
-        }
         this._onDidChangeTreeData.fire(item);
     }
 }

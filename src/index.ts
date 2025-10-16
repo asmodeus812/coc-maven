@@ -9,19 +9,20 @@ import { Settings } from "./Settings";
 import { ArchetypeModule } from "./archetype/ArchetypeModule";
 import { codeActionProvider } from "./codeAction/codeActionProvider";
 import { ConflictResolver, conflictResolver } from "./codeAction/conflictResolver";
-import { PomCompletionProvider } from "./completion/PomCompletionProvider";
+import { completionProvider } from "./completion/PomCompletionProvider";
 import { DEFAULT_MAVEN_LIFECYCLES } from "./completion/constants";
 import { contentProvider } from "./contentProvider";
 import { definitionProvider } from "./definition/definitionProvider";
 import { MavenExplorerProvider } from "./explorer/MavenExplorerProvider";
 import { LifecyclePhase } from "./explorer/model/LifecyclePhase";
+import { MavenProfile } from "./explorer/model/MavenProfile";
 import { MavenProject } from "./explorer/model/MavenProject";
 import { PluginGoal } from "./explorer/model/PluginGoal";
 import { pluginInfoProvider } from "./explorer/pluginInfoProvider";
 import { addDependencyHandler } from "./handlers/dependency/addDependencyHandler";
 import { excludeDependencyHandler } from "./handlers/dependency/excludeDependencyHandler";
 import { jumpToDefinitionHandler } from "./handlers/dependency/jumpToDefinitionHandler";
-import { setDependencyVersionHandler } from "./handlers/dependency/setDependencyVersionHandler";
+import { setDependencyVersionHandler, setDependencyVersionHandlerGeneric } from "./handlers/dependency/setDependencyVersionHandler";
 import { showDependenciesHandler } from "./handlers/dependency/showDependenciesHandler";
 import { runFavoriteCommandsHandler } from "./handlers/favorites/runFavoriteCommandsHandler";
 import { hoverProvider } from "./hover/hoverProvider";
@@ -36,7 +37,6 @@ import { Utils } from "./utils/Utils";
 import { loadMavenSettingsFilePath, loadPackageInfo } from "./utils/contextUtils";
 import { executeInTerminal } from "./utils/mavenUtils";
 import { dependenciesContentUri, effectivePomContentUri, registerCommand, selectProjectIfNecessary } from "./utils/uiUtils";
-import { MavenProfile } from "./explorer/model/MavenProfile";
 
 export async function activate(context: coc.ExtensionContext): Promise<void> {
     await loadPackageInfo(context);
@@ -100,14 +100,17 @@ export async function doActivate(context: coc.ExtensionContext): Promise<void> {
         mavenExplorerProvider.refresh();
     });
 
-    registerCommand(context, "maven.project.effectivePom", async () => {
-        Utils.showEffectivePom(await selectProjectIfNecessary());
+    registerCommand(context, "maven.project.effectivePom", async (data) => {
+        Utils.showEffectivePom(data);
     });
-    registerCommand(context, "maven.project.addDependency", async () => {
-        addDependencyHandler(await selectProjectIfNecessary());
+    registerCommand(context, "maven.project.addDependency", async (data) => {
+        addDependencyHandler(data);
     });
-    registerCommand(context, "maven.project.showDependencies", async () => {
-        showDependenciesHandler(await selectProjectIfNecessary());
+    registerCommand(context, "maven.project.setDependencyVersion", async (data: any) => {
+        setDependencyVersionHandlerGeneric(data);
+    });
+    registerCommand(context, "maven.project.showDependencies", async (data: any) => {
+        showDependenciesHandler(data);
     });
     registerCommand(context, "maven.project.configuration.update", () => {
         mavenExplorerProvider.refresh();
@@ -296,14 +299,13 @@ function registerConfigChangeListener(context: coc.ExtensionContext): void {
 function registerPomFileAuthoringHelpers(context: coc.ExtensionContext): void {
     const pomSelector: coc.DocumentSelector = [
         {
-            language: "xml",
             scheme: "file",
             pattern: Settings.Pomfile.globPattern()
         }
     ];
-    // completion item provider
+    // completion
     context.subscriptions.push(
-        coc.languages.registerCompletionItemProvider("maven", "M", pomSelector, new PomCompletionProvider(), [".", "-", "<"])
+        coc.languages.registerCompletionItemProvider("maven", "M", pomSelector, completionProvider, [".", "-", "<"])
     );
     // hover
     context.subscriptions.push(coc.languages.registerHoverProvider(pomSelector, hoverProvider));
@@ -311,7 +313,7 @@ function registerPomFileAuthoringHelpers(context: coc.ExtensionContext): void {
     context.subscriptions.push(coc.languages.registerDefinitionProvider(pomSelector, definitionProvider));
     // add a dependency
     context.subscriptions.push(coc.languages.registerCodeActionProvider(pomSelector, codeActionProvider, undefined));
-    // add quick fix for conflict dependencies
+    // add quick fix
     context.subscriptions.push(
         coc.languages.registerCodeActionProvider(pomSelector, conflictResolver, undefined, ConflictResolver.providedCodeActionKinds)
     );

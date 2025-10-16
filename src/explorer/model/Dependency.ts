@@ -53,7 +53,6 @@ export class Dependency implements ITreeItem, ITreeNode {
         const label = [this.groupId, this.artifactId, this.version].join(":");
         const treeItem: coc.TreeItem = new coc.TreeItem(label);
         treeItem.resourceUri = this.uri;
-        treeItem.tooltip = this.fullArtifactName;
         if (this.children.length !== 0) {
             treeItem.collapsibleState = coc.TreeItemCollapsibleState.Collapsed;
         } else {
@@ -73,7 +72,7 @@ export class Dependency implements ITreeItem, ITreeNode {
             title: "Goto dependency definition",
             command: "maven.exploerer.dependency.action",
             arguments: [this]
-        } as coc.Command
+        } as coc.Command;
         return treeItem;
     }
 }

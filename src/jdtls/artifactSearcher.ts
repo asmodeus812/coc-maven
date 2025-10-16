@@ -3,7 +3,6 @@
 
 import * as path from "path";
 import * as coc from "coc.nvim";
-import { applyWorkspaceEdit } from "../utils/editUtils";
 import { registerCommand } from "../utils/uiUtils";
 import { executeJavaLanguageServerCommand, getJavaExtension, isJavaExtActivated } from "./commands";
 
@@ -12,7 +11,7 @@ const UNDEFINED_TYPE = "16777218"; // e.g. Unknown var;
 const UNDEFINED_NAME = "570425394"; // e.g. Unknown.foo();
 
 const COMMAND_SEARCH_ARTIFACT = "maven.project.artifactSearch";
-const TITLE_RESOLVE_UNKNOWN_TYPE = "Resolve unknown type";
+const TITLE_RESOLVE_UNKNOWN_TYPE = "Add dependency for this type";
 
 export function registerArtifactSearcher(context: coc.ExtensionContext): void {
     const javaExt: coc.Extension<any> | undefined = getJavaExtension();
@@ -62,12 +61,8 @@ class TypeResolver {
 
     public async initialize(): Promise<void> {
         if (!this.initialized) {
-            try {
-                await executeJavaLanguageServerCommand("java.maven.initializeSearcher", this.dataPath);
-                this.initialized = true;
-            } catch (error) {
-                // ignore
-            }
+            await executeJavaLanguageServerCommand("java.maven.initializeSearcher", this.dataPath);
+            this.initialized = true;
         }
     }
 
@@ -77,18 +72,26 @@ class TypeResolver {
         }
 
         if (!this.initialized) {
-            this.initialize().catch();
+            this.initialize()
+                .then(() => {
+                    this.getArtifactsHover(document, position);
+                })
+                .catch(() => {
+                    coc.window.showErrorMessage("Unable to initialize artifact searcher");
+                });
             return undefined;
         }
 
-        const diagnostics: coc.Diagnostic[] = coc.diagnosticManager.getDiagnostics(document.uri).collection?.filter((diagnostic) => {
-            return (
-                diagnosticIndicatesUnresolvedType(diagnostic, document) &&
-                isAfterOrEqual(position, diagnostic.range.start) &&
-                isBeforeOrEqual(position, diagnostic.range.end)
-            );
-        });
-        if (diagnostics.length > 0) {
+        const diagnostics: coc.Diagnostic[] = coc.diagnosticManager
+            .getDiagnosticsInRange({ uri: document.uri } as coc.TextDocumentIdentifier, coc.Range.create(position, position))
+            .filter((diagnostic: coc.Diagnostic) => {
+                return (
+                    diagnosticIndicatesUnresolvedType(diagnostic, document) &&
+                    isAfterOrEqual(position, diagnostic.range.start) &&
+                    isBeforeOrEqual(position, diagnostic.range.end)
+                );
+            });
+        if (diagnostics?.length > 0) {
             const diagnostic: coc.Diagnostic = diagnostics[0];
             const line: number = diagnostic.range.start.line;
             const character: number = diagnostic.range.start.character;
@@ -101,8 +104,8 @@ class TypeResolver {
                 character,
                 length
             };
-            const commandName: string = TITLE_RESOLVE_UNKNOWN_TYPE;
-            const message = `\uD83D\uDC49 [${commandName}](command:${COMMAND_SEARCH_ARTIFACT}?${encodeURIComponent(JSON.stringify(param))} "${commandName}")`;
+            const message = `\uD83D\uDC49 ${TITLE_RESOLVE_UNKNOWN_TYPE} \n\nThe maven extension will automatically lookup for a matching artifact based on your current hover position. \n\nPlease pick an extension from the list to be added to your build file, or cancel the selection`;
+            coc.commands.executeCommand(COMMAND_SEARCH_ARTIFACT, param);
             return {
                 contents: {
                     value: message,
@@ -124,14 +127,20 @@ class TypeResolver {
         }
 
         if (!this.initialized) {
-            this.initialize().catch();
+            this.initialize()
+                .then(() => {
+                    this.getArtifactsCodeActions(document, context, _selectRange);
+                })
+                .catch(() => {
+                    coc.window.showErrorMessage("Unable to initialize artifact searcher");
+                });
             return undefined;
         }
 
         const diagnostics: coc.Diagnostic[] = context.diagnostics.filter((diagnostic) => {
             return diagnosticIndicatesUnresolvedType(diagnostic, document);
         });
-        if (diagnostics.length > 0) {
+        if (diagnostics?.length > 0) {
             const range: coc.Range = diagnostics[0].range;
             const className: string = document.getText(range);
             const uri: string = document.uri.toString();
@@ -172,7 +181,7 @@ class TypeResolver {
             return;
         }
 
-        const pickItem: coc.QuickPickItem | undefined = await coc.window.showQuickPick(getArtifactsPickItems(param.className), {
+        const pickItem: any = await coc.window.showQuickPick(getArtifactsPickItems(param.className), {
             placeHolder: "Select the artifact you want to add"
         });
         if (pickItem === undefined) {
@@ -190,47 +199,52 @@ async function getArtifactsPickItems(className: string): Promise<coc.QuickPickIt
         className
     };
     const response: IArtifactSearchResult[] = await executeJavaLanguageServerCommand("java.maven.searchArtifact", searchParam);
-    const picks: coc.QuickPickItem[] = [];
+    const picks: (coc.QuickPickItem & { artifactInfo: string })[] = [];
     for (let i = 0; i < Math.min(Math.round(response.length / 5), 5); i += 1) {
-        const arr: string[] = [response[i].groupId, " : ", response[i].artifactId, " : ", response[i].version];
+        const arr: string[] = [response[i].groupId, ":", response[i].artifactId, ":", response[i].version];
         picks.push({
-            label: `$(thumbsup)  ${response[i].className}`,
-            description: `${response[i].fullClassName} ${arr.join("")}`
+            label: `(matching) - ${response[i].className}`,
+            description: `${response[i].fullClassName}`,
+            artifactInfo: arr.join("")
         });
     }
     for (let i: number = Math.min(Math.round(response.length / 5), 5); i < response.length; i += 1) {
-        const arr: string[] = [response[i].groupId, " : ", response[i].artifactId, " : ", response[i].version];
+        const arr: string[] = [response[i].groupId, ":", response[i].artifactId, ":", response[i].version];
         picks.push({
             label: response[i].className,
-            description: `${response[i].fullClassName} ${arr.join("")},`
+            description: `${response[i].fullClassName}`,
+            artifactInfo: arr.join("")
         });
     }
     return picks;
 }
 
 async function applyEdits(uri: coc.Uri, edits: any): Promise<void> {
-    // if the pom is invalid, no change occurs in edits[2]
+    // if the pom is invalid, no change occurs in edits[2], there are at most 3 editrs in the response, one is the import action,
+    // the second one is the actual code replacement where the dependency is going to be/is used. The final edit is in the pom file,
+    // if the pom file does not have the dependency already it will be added
     if (Object.keys(edits[2].changes).length > 0) {
-        // 0: import 1: replace
-        await applyWorkspaceEdit(edits[0]);
-        await applyWorkspaceEdit(edits[1]);
+        // 0: import 1: replace, this will be in the target source file/file
         await coc.commands.executeCommand("maven.project.resource.open", uri);
+        await coc.workspace.applyEdit(edits[0]);
+        await coc.workspace.applyEdit(edits[1]);
 
         // 2: pom
         if (edits[2].changes[Object.keys(edits[2].changes)[0]].length === 0) {
-            // already has this dependency
+            // already has this dependency, we can skip this edit
             return;
         }
-        await applyWorkspaceEdit(edits[2]);
+        await coc.workspace.applyEdit(edits[2]);
     } else {
         coc.window.showInformationMessage("The pom.xml file does not exist or is invalid.");
     }
 }
 
-async function getWorkSpaceEdits(pickItem: coc.QuickPickItem, param: any): Promise<coc.WorkspaceEdit[]> {
+async function getWorkSpaceEdits(pickItem: any, param: any): Promise<coc.WorkspaceEdit[]> {
     return await executeJavaLanguageServerCommand(
         "java.maven.addDependency",
         pickItem.description,
+        pickItem.artifactInfo,
         param.uri,
         param.line,
         param.character,

@@ -4,7 +4,7 @@
 import * as coc from "coc.nvim";
 import { diagnosticProvider, MAVEN_DEPENDENCY_CONFLICT } from "../DiagnosticProvider";
 import { Dependency } from "../explorer/model/Dependency";
-import { MavenProjectManager } from "../project/MavenProjectManager";
+import { MavenProjectManager } from '../project/MavenProjectManager'
 
 export class ConflictResolver implements coc.CodeActionProvider {
     public static readonly providedCodeActionKinds: coc.CodeActionKind[] = [coc.CodeActionKind.QuickFix];
@@ -32,15 +32,15 @@ export class ConflictResolver implements coc.CodeActionProvider {
         const actionSetVersion = { title: `Resolve conflict for ${gid}:${aid}`, kind: coc.CodeActionKind.QuickFix } as coc.CodeAction;
         actionSetVersion.command = {
             command: "maven.project.setDependencyVersion",
-            title: "set version to",
+            title: "Resolve conflict variant",
             arguments: [
                 {
-                    pomPath: document.uri,
                     effectiveVersion,
                     groupId: gid,
                     artifactId: aid,
-                    fullDependencyText: MavenProjectManager.get(document.uri)?.fullText
-                }
+                    projectPomPath: coc.Uri.parse(document.uri).fsPath,
+                    fullText: MavenProjectManager.get(document.uri)?.fullText
+                } as unknown as Dependency
             ]
         };
         actionSetVersion.diagnostics = [diagnostic];

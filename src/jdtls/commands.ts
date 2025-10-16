@@ -6,14 +6,25 @@ import { JavaExtensionNotActivatedError } from "../utils/errorUtils";
 
 const JAVA_EXECUTE_WORKSPACE_COMMAND = "java.execute.workspaceCommand";
 
+const JAVA_COMMAND_MESSAGE_MAP = {
+    ["java.maven.initializeSearcher"]: "Initializing artifact searcher...",
+    ["java.maven.searchArtifact"]: "Sarching for a maven artifact...",
+    ["java.maven.addDependency"]: "Adding dependency to build file...",
+    ["java.maven.controlContext"]: "Evaluating control context..."
+};
+
 // tslint:disable-next-line:export-name
 export function executeJavaLanguageServerCommand<R>(...rest: unknown[]): Promise<R> {
     if (!isJavaExtEnabled()) {
-        throw new JavaExtensionNotActivatedError(
-            `Cannot execute command ${JAVA_EXECUTE_WORKSPACE_COMMAND}, VS Code Java Extension is not enabled.`
-        );
+        throw new JavaExtensionNotActivatedError(`Cannot command ${JAVA_EXECUTE_WORKSPACE_COMMAND} java extension is not enabled.`);
     }
-    return coc.commands.executeCommand<R>(JAVA_EXECUTE_WORKSPACE_COMMAND, ...rest);
+    const argumentsArray: any[] = rest;
+    return coc.window.withProgress(
+        { title: JAVA_COMMAND_MESSAGE_MAP[argumentsArray[0]] || `Executing an unknown command ${argumentsArray[0]}...` },
+        () => {
+            return coc.commands.executeCommand<R>(JAVA_EXECUTE_WORKSPACE_COMMAND, ...rest);
+        }
+    );
 }
 
 export function isJavaExtEnabled(): boolean {

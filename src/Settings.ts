@@ -145,7 +145,7 @@ export class Settings {
 function _getMavenSection<T>(section: string, resourceOrFilepath?: Uri | string): T | undefined {
     let resource: Uri | undefined;
     if (typeof resourceOrFilepath === "string") {
-        resource = Uri.file(resourceOrFilepath);
+        resource = Uri.parse(resourceOrFilepath);
     } else if (resourceOrFilepath instanceof Uri) {
         resource = resourceOrFilepath;
     }

@@ -12,16 +12,12 @@ import { SchemaProvider } from "./providers/SchemaProvider";
 import { SnippetProvider } from "./providers/SnippetProvider";
 
 export class PomCompletionProvider implements coc.CompletionItemProvider {
-    private readonly providers: IXmlCompletionProvider[];
+    private readonly genericProviders: IXmlCompletionProvider[];
+    private readonly schemaProvider: IXmlCompletionProvider;
 
     constructor() {
-        const providers = [new SnippetProvider(), new ArtifactProvider(), new PropertiesProvider()];
-
-        if (!isXmlExtensionEnabled()) {
-            providers.push(new SchemaProvider());
-        }
-
-        this.providers = providers;
+        this.genericProviders = [new SnippetProvider(), new ArtifactProvider(), new PropertiesProvider()];
+        this.schemaProvider = new SchemaProvider();
     }
 
     async provideCompletionItems(
@@ -38,10 +34,14 @@ export class PomCompletionProvider implements coc.CompletionItemProvider {
         }
 
         const result: coc.CompletionItem[] = [];
-        for (const provider of this.providers) {
+        for (const provider of this.genericProviders) {
             result.push(...(await provider.provide(document, position, currentNode as Node)));
+        }
+        if (!isXmlExtensionEnabled()) {
+            result.push(...(await this.schemaProvider.provide(document, position, currentNode as Node)));
         }
         return result;
     }
 }
 
+export const completionProvider: PomCompletionProvider = new PomCompletionProvider();

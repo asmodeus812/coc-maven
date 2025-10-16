@@ -64,4 +64,3 @@ export class SnippetProvider implements IXmlCompletionProvider {
         return ret;
     }
 }
-

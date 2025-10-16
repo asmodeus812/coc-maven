@@ -11,12 +11,6 @@ import { getCurrentNode, getEnclosingTag, getNodePath, getTextFromNode, XmlTagNa
 import { isXmlExtensionEnabled } from "../utils/extensionUtils";
 
 export class HoverProvider implements coc.HoverProvider {
-    private readonly isXmlExtensionEnabled: boolean;
-
-    constructor() {
-        this.isXmlExtensionEnabled = isXmlExtensionEnabled();
-    }
-
     public async provideHover(
         document: coc.TextDocument,
         position: coc.Position,
@@ -25,7 +19,10 @@ export class HoverProvider implements coc.HoverProvider {
         const documentText: string = document.getText();
         const cursorOffset: number = document.offsetAt(position);
         const currentNode: Node | undefined = getCurrentNode(documentText, cursorOffset);
-        if (currentNode === undefined || currentNode.startIndex === null || currentNode.endIndex === null) {
+        if (!currentNode || currentNode === undefined) {
+            return undefined;
+        }
+        if (currentNode?.startIndex === null || currentNode?.endIndex === null) {
             return undefined;
         }
 
@@ -65,7 +62,7 @@ export class HoverProvider implements coc.HoverProvider {
                                 value: [`groupId = ${groupIdHint}`, `artifactId = ${artifactIdHint}`, `version = ${effectiveVersion}`].join(
                                     "\n\n"
                                 ),
-                                kind: coc.MarkupKind.PlainText
+                                kind: coc.MarkupKind.Markdown
                             },
                             range: targetRange
                         } as coc.Hover;
@@ -74,16 +71,14 @@ export class HoverProvider implements coc.HoverProvider {
                 return undefined;
             }
             default:
-                // schema-based
-                if (this.isXmlExtensionEnabled) {
-                    // See: https://github.com/microsoft/vscode-maven/issues/918
+                if (isXmlExtensionEnabled()) {
                     return undefined;
                 }
                 return xsdElement
                     ? ({
                           contents: {
-                              value: [xsdElement.nodePath.replace(/\./g, ">"), xsdElement.markdownString].join("\n"),
-                              kind: coc.MarkupKind.PlainText
+                              value: [xsdElement.nodePath.replace(/\./g, " > "), xsdElement.markdownString.value].join("\n"),
+                              kind: coc.MarkupKind.Markdown
                           },
                           range: coc.Range.create(position, position)
                       } as coc.Hover)

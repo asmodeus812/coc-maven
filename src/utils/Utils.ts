@@ -13,7 +13,7 @@ import { DEFAULT_MAVEN_LIFECYCLES } from "../completion/constants";
 import { MavenProfile } from "../explorer/model/MavenProfile";
 import { MavenProject } from "../explorer/model/MavenProject";
 import { getExtensionVersion, getPathToTempFolder, getPathToWorkspaceStorage } from "./contextUtils";
-import { MavenNotFoundError } from "./errorUtils";
+import { MavenNotFoundError, UserError } from "./errorUtils";
 import { getLRUCommands, ICommandHistoryEntry } from "./historyUtils";
 import { executeInTerminal, getMaven, pluginDescription, rawEffectivePom } from "./mavenUtils";
 import { effectivePomContentUri, selectProjectIfNecessary } from "./uiUtils";
@@ -56,10 +56,10 @@ export class Utils {
 
         return await new Promise((resolve: (res: string) => void, reject: (e: Error) => void): void => {
             const urlObj: url.Url = url.parse(targetUrl);
-            const options: object = Object.assign(
-                { headers: Object.assign({}, customHeaders, { "User-Agent": `vscode/${getExtensionVersion()}` }) },
-                urlObj
-            );
+            const options: object = {
+                headers: { ...customHeaders, "User-Agent": `vscode/${getExtensionVersion()}` },
+                ...urlObj
+            };
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             let client: any;
@@ -104,17 +104,20 @@ export class Utils {
         });
     }
 
-    public static async showEffectivePom(param: Uri | MavenProject | string | undefined): Promise<void> {
+    public static async showEffectivePom(param?: any): Promise<void> {
         let pomPath: string | undefined;
         if (typeof param === "string") {
             pomPath = param;
-        } else if (typeof param === "object" && param instanceof MavenProject) {
+        } else if (typeof param.pomPath === "string") {
             pomPath = param.pomPath;
         } else if (typeof param === "object" && param instanceof Uri) {
             pomPath = param.fsPath;
+        } else {
+            pomPath = (await selectProjectIfNecessary())?.pomPath;
         }
-        if (!pomPath) {
-            throw new Error("Corresponding pom.xml file not found.");
+
+        if (!pomPath || !(await fse.pathExists(pomPath))) {
+            throw new UserError(`Specified POM ${pomPath} does not exist.`);
         }
 
         const mvn: string | undefined = await getMaven(pomPath);
@@ -137,24 +140,16 @@ export class Utils {
             return undefined;
         }
         const task = async () => {
-            try {
-                const ret: string | undefined = await rawEffectivePom(pomPath);
-                return ret ? ret : "";
-            } catch (error) {
-                throw error;
-            }
+            const ret: string | undefined = await rawEffectivePom(pomPath);
+            return ret || "";
         };
         return await window.withProgress({ title: "Generating effective pom..." }, task);
     }
 
     public static async getPluginDescription(pluginId: string, pomPath: string): Promise<string> {
         const task = async () => {
-            try {
-                const ret: string | undefined = await pluginDescription(pluginId, pomPath);
-                return ret ? ret : "";
-            } catch (error) {
-                throw error;
-            }
+            const ret: string | undefined = await pluginDescription(pluginId, pomPath);
+            return ret || "";
         };
         return await window.withProgress({ title: "Obtaining plugin subscriptions..." }, task);
     }
@@ -175,7 +170,7 @@ export class Utils {
         });
         const trimmedGoals: string | undefined = inputGoals ? inputGoals.trim() : undefined;
         if (trimmedGoals) {
-            await executeInTerminal({ command: trimmedGoals, pomfile: pomPath });
+            await executeInTerminal({ command: trimmedGoals, pomFile: pomPath });
         }
     }
 
@@ -197,7 +192,7 @@ export class Utils {
             )
             .then((item) => (item ? item.value : undefined));
         if (selected) {
-            await executeInTerminal({ command: selected.command, pomfile: selected.pomPath });
+            await executeInTerminal({ command: selected.command, pomFile: selected.pomPath });
         } else {
             await window.showWarningMessage("No selection made or histroy was empty");
         }

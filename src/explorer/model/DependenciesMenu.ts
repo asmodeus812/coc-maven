@@ -34,9 +34,8 @@ export class DependenciesMenu extends ProjectMenu implements ITreeItem {
 
     public getTreeItem(): coc.TreeItem | coc.Thenable<coc.TreeItem> {
         const treeItem: coc.TreeItem = new coc.TreeItem(this.name as string, coc.TreeItemCollapsibleState.Collapsed);
-        const uri: coc.Uri = coc.Uri.file("");
+        const uri: coc.Uri = coc.Uri.file(this.name as string);
         treeItem.resourceUri = uri.with({ authority: this.project.pomPath }); // distinguish dependenciesMenu in multi-module project
-        treeItem.tooltip = this.name;
         return treeItem;
     }
 

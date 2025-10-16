@@ -172,6 +172,7 @@ async function parseMetadataFromJar(groupId: string, artifactId: string, version
             goals
         };
     } catch (error) {
+        console.warn((error as Error).message);
         return undefined;
     }
 }

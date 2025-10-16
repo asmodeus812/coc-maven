@@ -99,7 +99,7 @@ export class MavenProject implements ITreeItem {
         return this._convertXmlPlugin(plugins);
     }
 
-    public get dependencies(): any[] {
+    public get dependencies(): Dependency[] {
         let deps: any[] = [];
         if (_.has(this._ePom, "projects.project")) {
             // multi-module project
@@ -111,7 +111,7 @@ export class MavenProject implements ITreeItem {
             // single-project
             deps = _.get(this._ePom, "project.dependencies[0].dependency");
         }
-        return deps;
+        return this._convertXmlDependency(deps);
     }
 
     /**
@@ -162,7 +162,6 @@ export class MavenProject implements ITreeItem {
         const treeItem: coc.TreeItem = new coc.TreeItem(label);
         treeItem.collapsibleState = coc.TreeItemCollapsibleState.Collapsed;
         treeItem.description = this.id;
-        treeItem.tooltip = this.pomPath;
         treeItem.command = {
             title: "Goto effective pom",
             command: "maven.explorer.goToEffective",
@@ -172,7 +171,7 @@ export class MavenProject implements ITreeItem {
     }
 
     public getContextValue(): string {
-        return CONTEXT_VALUE;
+        return `maven:${this.pomPath}`;
     }
 
     public getChildren(): ITreeItem[] {
@@ -212,14 +211,15 @@ export class MavenProject implements ITreeItem {
             this._pom = await Utils.parseXmlFile(this.pomPath);
             this.updateProperties();
         } catch (error) {
+            console.warn((error as Error).message);
             this._pom = undefined;
         }
     }
 
     public getDependencyVersion(gid: string, aid: string): string | undefined {
         // from effective POM
-        const deps: any[] | undefined = this.dependencies;
-        const targetDep: any = deps?.find((elem) => _.get(elem, "groupId[0]") === gid && _.get(elem, "artifactId[0]") === aid);
+        const deps: Dependency[] | undefined = this.dependencies;
+        const targetDep: any = deps?.find((elem) => elem.groupId === gid && elem.artifactId === aid);
         if (targetDep?.version?.[0] !== undefined) {
             return targetDep.version[0];
         }
@@ -233,7 +233,24 @@ export class MavenProject implements ITreeItem {
 
     private async _refreshPom(): Promise<void> {
         await this.parsePom();
+        await this.getEffectivePom();
         MavenExplorerProvider.getInstance().refresh(this);
+    }
+
+    private _convertXmlDependency(deps: any[] | undefined): Dependency[] {
+        if (deps && deps.length > 0) {
+            return deps.map(
+                (p) =>
+                    new Dependency(
+                        _.get(p, "groupId[0]"),
+                        _.get(p, "artifactId[0]"),
+                        _.get(p, "version[0]"),
+                        _.get(p, "scope[0]"),
+                        this.pomPath
+                    )
+            );
+        }
+        return [];
     }
 
     private _convertXmlPlugin(plugins: any[] | undefined): MavenPlugin[] {

@@ -10,9 +10,10 @@ import { UserError } from "../../utils/errorUtils";
 import { getInnerEndIndex, getInnerStartIndex, getNodesByTag, XmlTagName } from "../../utils/lexerUtils";
 import { getArtifacts, IArtifactMetadata } from "../../utils/requestUtils";
 import { getUsage } from "./artifactUsage";
+import { selectProjectIfNecessary } from "../../utils/uiUtils";
 
 export async function addDependencyHandler(options?: any): Promise<void> {
-    let pomPath: string;
+    let pomPath: string | undefined;
     if (options?.pomPath) {
         // for nodes from Maven explorer
         pomPath = options.pomPath;
@@ -23,10 +24,10 @@ export async function addDependencyHandler(options?: any): Promise<void> {
         // for "Dependencies" node from module in Maven explorer
         pomPath = options.project.pomPath;
     } else {
-        return;
+        pomPath = (await selectProjectIfNecessary())?.pomPath;
     }
 
-    if (!(await fse.pathExists(pomPath))) {
+    if (!pomPath || !(await fse.pathExists(pomPath))) {
         throw new UserError(`Specified POM ${pomPath} does not exist.`);
     }
 

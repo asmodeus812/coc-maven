@@ -19,11 +19,22 @@ import { getInnerEndIndex, getInnerStartIndex, getNodesByTag, XmlTagName } from 
 import { getVersions } from "../../utils/requestUtils";
 import { getDependencyNodeFromDependenciesNode } from "./utils";
 
+export async function setDependencyVersionHandlerGeneric(param?: {
+    projectPomPath: string;
+    effectiveVersion: string;
+    groupId: string;
+    artifactId: string;
+    fullText: string;
+}): Promise<void> {
+    // TODO: this is probably not the cleanest way to provide this bridge
+    return setDependencyVersionHandler(param as unknown as Dependency);
+}
+
 export async function setDependencyVersionHandler(selectedItem: Dependency): Promise<void> {
     const pomPath: string = selectedItem.projectPomPath;
     const effectiveVersion = selectedItem.omittedStatus?.effectiveVersion ?? selectedItem.version;
 
-    if (!(await fse.pathExists(pomPath))) {
+    if (!pomPath || !(await fse.pathExists(pomPath))) {
         throw new UserError(`Specified POM ${pomPath} does not exist.`);
     }
 
@@ -114,7 +125,7 @@ async function insertDependencyManagement(
         throw new UserError("Invalid target XML node to insert dependency management.");
     }
     const location: coc.Uri = coc.Uri.file(pomPath);
-    await coc.commands.executeCommand("vscode.open", location);
+    await coc.commands.executeCommand("maven.project.resource.open", location);
     const baseDocument: coc.Document = await coc.workspace.openTextDocument(location);
     const currentDocument: coc.TextDocument = baseDocument.textDocument;
     const textEditor: coc.TextEditor = coc.window.activeTextEditor as coc.TextEditor;

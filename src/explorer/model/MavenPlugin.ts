@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 
 import * as coc from "coc.nvim";
-import { taskExecutor } from "../../taskExecutor";
 import { MavenExplorerProvider } from "../MavenExplorerProvider";
 import { pluginInfoProvider } from "../pluginInfoProvider";
 import { ITreeItem } from "./ITreeItem";
@@ -25,7 +24,6 @@ export class MavenPlugin implements ITreeItem {
         this.groupId = groupId;
         this.artifactId = artifactId;
         this.version = version;
-        taskExecutor.execute(async () => await this.fetchPrefix());
     }
 
     private get pluginId(): string {
@@ -41,11 +39,8 @@ export class MavenPlugin implements ITreeItem {
     }
 
     public async getTreeItem(): Promise<coc.TreeItem> {
-        const label: string = this.prefix || this.pluginId;
-        const treeItem: coc.TreeItem = new coc.TreeItem(label, coc.TreeItemCollapsibleState.Collapsed);
-        if (this.prefix) {
-            treeItem.description = this.pluginId;
-        }
+        const treeItem: coc.TreeItem = new coc.TreeItem(this.pluginId, coc.TreeItemCollapsibleState.Collapsed);
+        await this.fetchPrefix();
         return treeItem;
     }
 
@@ -53,6 +48,7 @@ export class MavenPlugin implements ITreeItem {
         try {
             await this.fetchGoals();
         } catch (error) {
+            console.warn((error as Error).message);
             return [];
         }
         return this.goals ? this.goals.map((goal) => new PluginGoal(this, goal)) : [];
@@ -68,7 +64,6 @@ export class MavenPlugin implements ITreeItem {
         }
         const prefix = await pluginInfoProvider.getPluginPrefix(this.groupId, this.artifactId);
         this.prefix = prefix;
-        MavenExplorerProvider.getInstance().refresh(this); // update label/description of current tree item.
     }
 
     private async fetchGoals(): Promise<void> {
@@ -76,6 +71,6 @@ export class MavenPlugin implements ITreeItem {
             return;
         }
         const goals = await pluginInfoProvider.getPluginGoals(this.project.pomPath, this.groupId, this.artifactId, this.version);
-        this.goals = goals;
+        this.goals = goals?.filter((name: string) => !!name && name.length > 0);
     }
 }

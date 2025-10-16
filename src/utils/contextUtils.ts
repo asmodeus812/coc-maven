@@ -51,7 +51,7 @@ export async function loadMavenSettingsFilePath(): Promise<void> {
             mavenOutputChannel.appendLine(`local repository: ${MAVEN_LOCAL_REPOSITORY}`);
         }
     } catch (error) {
-        // ignore
+        console.warn((error as Error).message);
     }
 }
 
@@ -107,4 +107,3 @@ export function possibleLocalPomPath(gid: string, aid: string): string[] {
     const versions = readdirSync(artifactFolder);
     return versions.map((v) => path.join(artifactFolder, v, `${aid}-${v}.pom`));
 }
-

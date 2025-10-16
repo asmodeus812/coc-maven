@@ -14,7 +14,7 @@ export class PluginsMenu extends ProjectMenu implements ITreeItem {
         this.name = "Plugins";
     }
 
-    public async getChildren() : Promise<MavenPlugin[]> {
+    public async getChildren(): Promise<MavenPlugin[]> {
         await this.project.getEffectivePom();
         return this.project.plugins;
     }
@@ -24,7 +24,6 @@ export class PluginsMenu extends ProjectMenu implements ITreeItem {
     }
 
     public async refresh(): Promise<void> {
-        this.project.refreshEffectivePom().catch(console.error);
         MavenExplorerProvider.getInstance().refresh(this);
     }
 }

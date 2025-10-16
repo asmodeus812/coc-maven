@@ -53,7 +53,7 @@ export async function importProjectOnDemand(projectFolder: string) {
     } else if (projectImportStrategy === "manual") {
         coc.commands.executeCommand<void>(
             "java.project.changeImportedProjects",
-            [coc.Uri.file(path.join(projectFolder, "pom.xml")).fsPath],
+            [coc.Uri.parse(path.join(projectFolder, "pom.xml")).fsPath],
             [],
             []
         );
