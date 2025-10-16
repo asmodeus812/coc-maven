@@ -37,6 +37,7 @@ import { Utils } from "./utils/Utils";
 import { loadMavenSettingsFilePath, loadPackageInfo } from "./utils/contextUtils";
 import { executeInTerminal } from "./utils/mavenUtils";
 import { dependenciesContentUri, effectivePomContentUri, registerCommand, selectProjectIfNecessary } from "./utils/uiUtils";
+import { focusResourceLocation } from "./utils/editUtils";
 
 export async function activate(context: coc.ExtensionContext): Promise<void> {
     await loadPackageInfo(context);
@@ -126,8 +127,7 @@ export async function doActivate(context: coc.ExtensionContext): Promise<void> {
         context,
         "maven.project.resource.open",
         async (uri: string, openCommand?: string) => {
-            await nvim.call("win_gotoid", [alternateWindowId]);
-            await coc.workspace.jumpTo(uri, null, openCommand);
+            await focusResourceLocation(uri, alternateWindowId, openCommand);
         },
         true
     );

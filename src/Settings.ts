@@ -55,6 +55,10 @@ export class Settings {
         public static defaultWindowsShell(): string | undefined {
             return workspace.getConfiguration("terminal").get<string>("integrated.shell.windows");
         }
+
+        public static defaultMavenExecutable(): string | undefined {
+            return workspace.getConfiguration("maven").get<string>("executable.path");
+        }
     };
 
     public static readonly Terminal = class {

@@ -12,7 +12,8 @@ import {
     constructDependenciesNode,
     constructDependencyManagementNode,
     constructDependencyNode,
-    getIndentation
+    getBaseIndentation,
+    getInnerIndentation
 } from "../../utils/editUtils";
 import { UserError } from "../../utils/errorUtils";
 import { getInnerEndIndex, getInnerStartIndex, getNodesByTag, XmlTagName } from "../../utils/lexerUtils";
@@ -128,10 +129,8 @@ async function insertDependencyManagement(
     await coc.commands.executeCommand("maven.project.resource.open", location);
     const baseDocument: coc.Document = await coc.workspace.openTextDocument(location);
     const currentDocument: coc.TextDocument = baseDocument.textDocument;
-    const textEditor: coc.TextEditor = coc.window.activeTextEditor as coc.TextEditor;
-    const baseIndent: string = getIndentation(currentDocument, getInnerEndIndex(targetNode));
-    const options: coc.TextEditorOptions = textEditor.options;
-    const indent: string = options.insertSpaces && typeof options.tabSize === "number" ? " ".repeat(options.tabSize) : "\t";
+    const baseIndent: string = getBaseIndentation(currentDocument, getInnerEndIndex(targetNode));
+    const indent: string = getInnerIndentation(location);
     const eol: string = process.platform !== "win32" ? "\n" : "\r\n";
 
     let insertPosition: coc.Position | undefined;

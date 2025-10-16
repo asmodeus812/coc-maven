@@ -5,7 +5,7 @@ import { Element, isTag } from "domhandler";
 import * as fse from "fs-extra";
 import * as coc from "coc.nvim";
 import { Dependency } from "../../explorer/model/Dependency";
-import { getIndentation } from "../../utils/editUtils";
+import { getBaseIndentation, getInnerIndentation } from "../../utils/editUtils";
 import { UserError } from "../../utils/errorUtils";
 import { getInnerEndIndex, getInnerStartIndex, XmlTagName } from "../../utils/lexerUtils";
 import { getDependencyNode } from "./utils";
@@ -44,13 +44,13 @@ async function insertExcludeDependency(pomPath: string, targetNode: Element, gid
     await coc.commands.executeCommand("maven.project.resource.open", location);
     const baseDocument: coc.Document = await coc.workspace.openTextDocument(location);
     const currentDocument: coc.TextDocument = baseDocument.textDocument;
-    const baseIndent: string = getIndentation(currentDocument, getInnerEndIndex(targetNode));
-    const textEditor: coc.TextEditor = coc.window.activeTextEditor as coc.TextEditor;
-    const options: coc.TextEditorOptions = textEditor.options;
-    const indent: string = options.insertSpaces && typeof options.tabSize === "number" ? " ".repeat(options.tabSize) : "\t";
+    const baseIndent: string = getBaseIndentation(currentDocument, getInnerEndIndex(targetNode));
+    const indent: string = getInnerIndentation(location);
     const eol: string = process.platform !== "win32" ? "\n" : "\r\n";
+
     let insertPosition: coc.Position;
     let targetText: string;
+
     const exclusionNode: Element | undefined = targetNode.children?.find(
         (node) => isTag(node) && node.tagName === XmlTagName.Exclusions
     ) as Element | undefined;

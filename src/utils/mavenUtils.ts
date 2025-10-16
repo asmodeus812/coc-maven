@@ -2,19 +2,18 @@
 // Licensed under the MIT license.
 
 import * as child_process from "child_process";
+import * as coc from "coc.nvim";
 import expandHome from "expand-home-dir";
 import * as fse from "fs-extra";
 import md5 from "md5";
 import * as path from "path";
-import * as coc from "coc.nvim";
 import which from "which";
-import { mavenOutputChannel } from "../mavenOutputChannel";
-import { mavenTerminal } from "../mavenTerminal";
-import { MavenProjectManager } from "../project/MavenProjectManager";
-import { Settings } from "../Settings";
-import { getPathToExtensionRoot, getPathToTempFolder, getPathToWorkspaceStorage } from "./contextUtils";
-import { MavenNotFoundError } from "./errorUtils";
-import { updateLRUCommands } from "./historyUtils";
+import {mavenOutputChannel} from "../mavenOutputChannel";
+import {mavenTerminal} from "../mavenTerminal";
+import {MavenProjectManager} from "../project/MavenProjectManager";
+import {Settings} from "../Settings";
+import {getPathToExtensionRoot, getPathToTempFolder, getPathToWorkspaceStorage} from "./contextUtils";
+import {updateLRUCommands} from "./historyUtils";
 
 // calculate dependency graph
 const GOAL_DEPENDENCY_GRAPH = "com.github.ferstl:depgraph-maven-plugin:4.0.2:graph";
@@ -85,7 +84,8 @@ export async function executeInBackground(options: {
 }): Promise<unknown> {
     const mvn: string | undefined = options.mvnExecutable || (await getMaven(options.pomFile));
     if (mvn === undefined) {
-        throw new MavenNotFoundError();
+        await promptToSettingMavenExecutable();
+        return undefined;
     }
 
     const command: string = wrappedWithQuotes(mvn);
@@ -151,9 +151,9 @@ export async function executeInTerminal(options: {
     env?: { [key: string]: string };
     terminalName?: string;
 }): Promise<coc.Terminal | undefined> {
-    const { command, mvnExecutable: mvnPath, pomFile: pomfile, cwd, env, terminalName } = options;
-    const workspaceFolder: coc.WorkspaceFolder | undefined = pomfile ? coc.workspace.getWorkspaceFolder(coc.Uri.file(pomfile)) : undefined;
-    const mvn: string | undefined = mvnPath || (await getMaven(pomfile));
+    const { command, mvnExecutable, pomFile, cwd, env, terminalName } = options;
+    const workspaceFolder: coc.WorkspaceFolder | undefined = pomFile ? coc.workspace.getWorkspaceFolder(coc.Uri.file(pomFile)) : undefined;
+    const mvn: string | undefined = mvnExecutable || (await getMaven(pomFile));
     if (mvn === undefined) {
         await promptToSettingMavenExecutable();
         return undefined;
@@ -164,8 +164,8 @@ export async function executeInTerminal(options: {
 
     // profiles
     let profileOptions: string | undefined;
-    if (pomfile) {
-        const project = MavenProjectManager.get(pomfile);
+    if (pomFile) {
+        const project = MavenProjectManager.get(pomFile);
         const selectedIds = project?.profiles?.filter((p) => p.selected === true)?.map((p) => p.id) ?? [];
         const unselectedIds = project?.profiles?.filter((p) => p.selected === false)?.map((p) => `-${p.id}`) ?? [];
         if (selectedIds.length + unselectedIds.length > 0) {
@@ -176,16 +176,16 @@ export async function executeInTerminal(options: {
         mvnString,
         mvnSettingsFile && `-s "${await mavenTerminal.formattedPathForTerminal(mvnSettingsFile)}"`,
         command.trim(),
-        pomfile && `-f "${await mavenTerminal.formattedPathForTerminal(pomfile)}"`,
+        pomFile && `-f "${await mavenTerminal.formattedPathForTerminal(pomFile)}"`,
         profileOptions,
-        Settings.Executable.options(pomfile)
+        Settings.Executable.options(pomFile)
     ]
         .filter(Boolean)
         .join(" ");
     const name: string = terminalName || (workspaceFolder ? `Maven-${workspaceFolder.name}` : "Maven");
     const terminal: coc.Terminal = await mavenTerminal.runInTerminal(fullCommand, { name, cwd, env, workspaceFolder });
-    if (pomfile) {
-        await updateLRUCommands(command, pomfile);
+    if (pomFile) {
+        await updateLRUCommands(command, pomFile);
     }
     return terminal;
 }
@@ -258,41 +258,29 @@ function getTempFolder(identifier: string): string {
     return outputPath || getPathToTempFolder(md5(identifier));
 }
 
-export async function promptToSettingMavenExecutable(): Promise<void> {
+async function promptToSettingMavenExecutable(): Promise<void> {
     const SETTING_MAVEN_EXECUTABLE_PATH = "maven.executable.path";
-    const MESSAGE = `Maven executable not found in PATH. Please specify "${SETTING_MAVEN_EXECUTABLE_PATH}".`;
-    const BUTTON_GOTO_SETTINGS = "Open Settings";
-    const BUTTON_BROWSE_FOR_MAVEN = "Browse...";
+    const MESSAGE = `Maven not found in PATH. Please specify "${SETTING_MAVEN_EXECUTABLE_PATH}".`;
 
-    const choice: string | undefined = await coc.window.showInformationMessage(MESSAGE, BUTTON_GOTO_SETTINGS, BUTTON_BROWSE_FOR_MAVEN);
-    switch (choice) {
-        case BUTTON_GOTO_SETTINGS: {
-            await coc.commands.executeCommand("workbench.action.openSettings", SETTING_MAVEN_EXECUTABLE_PATH);
-            break;
-        }
-        case BUTTON_BROWSE_FOR_MAVEN: {
-            const mvnPath = await browseForMavenBinary();
-            if (mvnPath) {
-                Settings.setMavenExecutablePath(mvnPath);
-                await coc.window.showInformationMessage(`Successfully set "${SETTING_MAVEN_EXECUTABLE_PATH}" to: ${mvnPath}`);
-            }
-            break;
-        }
-        default:
-            break;
+    await coc.window.showInformationMessage(MESSAGE);
+    const mvnPath = await browseForMavenBinary();
+    if (mvnPath) {
+        Settings.setMavenExecutablePath(mvnPath);
+        await coc.window.showInformationMessage(`Successfully set "${SETTING_MAVEN_EXECUTABLE_PATH}" to: ${mvnPath}`);
+    } else {
+        await coc.window.showWarningMessage(`Setting maven binary canceled by the user`);
     }
 }
 
 async function browseForMavenBinary(): Promise<string | undefined> {
     const mvnFilename: string = isWin() ? "mvn.cmd" : "mvn";
-
-    const mvnPath: string = await coc.window.requestInput(`Enter path to ${mvnFilename}`, "", {
-        placeholder: "Enter path to maven binary"
+    const promptTitle: string = `Enter path to ${mvnFilename} binary`;
+    const mvnPath: string = await coc.window.requestInput(promptTitle, "", {
+        placeholder: promptTitle
     });
     if (mvnPath === undefined) {
         return undefined;
     }
-
     if (!mvnPath?.endsWith(mvnFilename)) {
         await coc.window.showErrorMessage(`Maven executable must match: ${mvnFilename}`);
         return undefined;

@@ -1,9 +1,53 @@
 import * as coc from "coc.nvim";
 
 // tslint:disable-next-line: export-name
-export function getIndentation(document: coc.TextDocument, offset: number): string {
+export function getBaseIndentation(document: coc.TextDocument, offset: number): string {
     const closingTagPosition: coc.Position = document.positionAt(offset);
     return document.getText(coc.Range.create(coc.Position.create(closingTagPosition.line, 0), closingTagPosition));
+}
+
+export function getInnerIndentation(location: coc.Uri): string {
+    const stringUri: string = location.toString();
+    const textEditor: coc.TextEditor | undefined = coc.window.activeTextEditor;
+    let options: coc.TextEditorOptions = textEditor?.options as coc.TextEditorOptions;
+    if (!options || textEditor?.document.uri !== stringUri) {
+        for (const editor of coc.window.visibleTextEditors) {
+            if (stringUri === editor?.document.uri) {
+                options = editor.options;
+                break;
+            }
+        }
+        options =
+            options ??
+            ({
+                tabSize: 4,
+                insertSpaces: true
+            } as coc.TextEditorOptions);
+    }
+    return options.insertSpaces && typeof options.tabSize === "number" ? " ".repeat(options.tabSize) : "\t";
+}
+
+export async function focusResourceLocation(location: coc.Uri | string, alternateWindowId?: number, openCommand?: string): Promise<void> {
+    const stringUri: string = typeof location === "string" ? location : location.toString();
+    const textEditor: coc.TextEditor | undefined = coc.window.activeTextEditor;
+    if (textEditor?.document.uri !== stringUri) {
+        let visibleEditor: coc.TextEditor | undefined = undefined;
+        for (const editor of coc.window.visibleTextEditors) {
+            if (stringUri === editor?.document.uri) {
+                visibleEditor = editor;
+                break;
+            }
+        }
+        if (visibleEditor?.winid) {
+            await coc.workspace.nvim.call("win_gotoid", [visibleEditor.winid]);
+            return;
+        }
+    }
+
+    if (alternateWindowId !== undefined) {
+        await coc.workspace.nvim.call("win_gotoid", [alternateWindowId]);
+    }
+    await coc.workspace.jumpTo(location, null, openCommand);
 }
 
 export function constructDependencyNode(options: {

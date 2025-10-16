@@ -5,7 +5,7 @@ import * as coc from "coc.nvim";
 import { Element, isTag } from "domhandler";
 import * as fse from "fs-extra";
 import * as path from "path";
-import { constructDependenciesNode, constructDependencyNode, getIndentation } from "../../utils/editUtils";
+import { constructDependenciesNode, constructDependencyNode, getBaseIndentation, getInnerIndentation } from "../../utils/editUtils";
 import { UserError } from "../../utils/errorUtils";
 import { getInnerEndIndex, getInnerStartIndex, getNodesByTag, XmlTagName } from "../../utils/lexerUtils";
 import { getArtifacts, IArtifactMetadata } from "../../utils/requestUtils";
@@ -99,16 +99,16 @@ async function insertDependency(
     classifier?: string
 ): Promise<void> {
     const location: coc.Uri = coc.Uri.file(pomPath);
-    await coc.commands.executeCommand("vscode.open", location);
+    await coc.commands.executeCommand("maven.project.resource.open", location);
     const baseDocument: coc.Document = await coc.workspace.openTextDocument(location);
     const currentDocument: coc.TextDocument = baseDocument.textDocument;
-    const baseIndent: string = getIndentation(currentDocument, getInnerEndIndex(targetNode));
-    const textEditor: coc.TextEditor = coc.window.activeTextEditor as coc.TextEditor;
-    const options: coc.TextEditorOptions = textEditor.options;
-    const indent: string = options.insertSpaces && typeof options.tabSize === "number" ? " ".repeat(options.tabSize) : "\t";
+    const baseIndent: string = getBaseIndentation(currentDocument, getInnerEndIndex(targetNode));
+    const indent: string = getInnerIndentation(location);
     const eol: string = process.platform !== "win32" ? "\n" : "\r\n";
+
     let insertPosition: coc.Position;
     let targetText: string;
+
     if (targetNode.tagName === XmlTagName.Dependencies) {
         insertPosition = currentDocument.positionAt(getInnerStartIndex(targetNode));
         targetText = constructDependencyNode({ gid, aid, version, dtype: dependencyType, classifier, baseIndent, indent, eol });

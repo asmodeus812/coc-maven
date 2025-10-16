@@ -11,7 +11,7 @@ export async function promptOnDidProjectCreated(projectName: string, projectFold
     const hasOpenFolder = coc.workspace.workspaceFolders !== undefined;
     const choice = await specifyOpenMethod(hasOpenFolder, projectName);
     if (choice === OPEN_IN_NEW_WORKSPACE) {
-        await coc.commands.executeCommand("vscode.open", coc.Uri.parse(projectFolderPath));
+        await coc.commands.executeCommand("maven.project.resource.open", projectFolderPath);
     }
 }
 
