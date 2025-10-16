@@ -329,7 +329,12 @@ async function mavenHistoryHandler(item: MavenProject | undefined): Promise<void
 
 async function updateArchetypeCatalogHandler(): Promise<void> {
     await coc.window.withProgress({ title: "Updating archetype catalog..." }, async (p: Progress<{ message: string }>) => {
-        await ArchetypeModule.updateArchetypeCatalog();
-        p.report({ message: "Finished updating architypes." });
+        try {
+            await ArchetypeModule.updateArchetypeCatalog();
+            p.report({ message: "Finished updating architypes." });
+        } catch (error) {
+            coc.window.showErrorMessage(`Unable to update catalog ${(error as Error).message}`);
+            throw error;
+        }
     });
 }

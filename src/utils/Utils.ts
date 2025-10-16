@@ -140,16 +140,26 @@ export class Utils {
             return undefined;
         }
         const task = async () => {
-            const ret: string | undefined = await rawEffectivePom(pomPath);
-            return ret || "";
+            try {
+                const ret: string | undefined = await rawEffectivePom(pomPath);
+                return ret || "";
+            } catch (error) {
+                window.showErrorMessage(`Unable to compute effective pom ${(error as Error).message}`);
+                throw error;
+            }
         };
         return await window.withProgress({ title: "Generating effective pom..." }, task);
     }
 
-    public static async getPluginDescription(pluginId: string, pomPath: string): Promise<string> {
+    public static async getPluginDescription(pluginId: string, pomPath: string): Promise<string | undefined> {
         const task = async () => {
-            const ret: string | undefined = await pluginDescription(pluginId, pomPath);
-            return ret || "";
+            try {
+                const ret: string | undefined = await pluginDescription(pluginId, pomPath);
+                return ret || "";
+            } catch (error) {
+                window.showErrorMessage(`Unable to fetch plugin descriptions ${(error as Error).message}`);
+                throw error;
+            }
         };
         return await window.withProgress({ title: "Obtaining plugin subscriptions..." }, task);
     }

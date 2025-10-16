@@ -158,10 +158,15 @@ async function executeInTerminalHandler(metadata: IProjectCreationMetadata): Pro
             return false;
         }
         p.report({ message: "Generating project structure..." });
-        return await executeInBackground({
-            command: cmdArgs.join(" "),
-            mvnExecutable: mvnPath
-        });
+        try {
+            return await executeInBackground({
+                command: cmdArgs.join(" "),
+                mvnExecutable: mvnPath
+            });
+        } catch (error) {
+            coc.window.showErrorMessage(`Unable to generate archetype project ${(error as Error).message}`);
+            throw error;
+        }
     };
 
     await coc.window.withProgress({ title: "Creating maven project..." }, task);
@@ -228,9 +233,14 @@ async function createBasicMavenProject(metadata: IProjectCreationMetadata): Prom
             await updateParentPom(metadata.parentProject.pomPath, artifactId);
         }
 
-        // Import the new module as a Java project
-        p.report({ message: "Importing module as Java project...", increment: 20 });
-        importProjectOnDemand(targetFolder);
+        try {
+            // Import the new module as a Java project
+            p.report({ message: "Importing module as Java project...", increment: 40 });
+            await importProjectOnDemand(targetFolder);
+        } catch (error) {
+            coc.window.showErrorMessage(`Unable to create simple project ${(error as Error).message}`);
+            throw error;
+        }
     };
 
     await coc.window.withProgress({ title: "Creating maven project..." }, task);
@@ -352,42 +362,3 @@ export class ArchetypeMetadata {
     public version?: string;
     public isLoadMore?: boolean;
 }
-
-function wrappedWithQuotes(mvn: string): string {
-    if (mvn === "mvn") {
-        return mvn;
-    } else {
-        return `"${mvn}"`;
-    }
-}
-
-// see https://github.com/microsoft/vscode/blob/dddbfa61652de902c75436d250a50c71501da2d7/src/vs/workbench/contrib/tasks/browser/terminalTaskSystem.ts#L140
-const shellQuotes: { [key: string]: any } = {
-    cmd: {
-        strong: '"'
-    },
-    powershell: {
-        escape: {
-            escapeChar: "`",
-            charsToEscape: " \"'()"
-        },
-        strong: "'",
-        weak: '"'
-    },
-    bash: {
-        escape: {
-            escapeChar: "\\",
-            charsToEscape: " \"'"
-        },
-        strong: "'",
-        weak: '"'
-    },
-    zsh: {
-        escape: {
-            escapeChar: "\\",
-            charsToEscape: " \"'"
-        },
-        strong: "'",
-        weak: '"'
-    }
-};

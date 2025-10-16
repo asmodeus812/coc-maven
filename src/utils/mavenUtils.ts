@@ -8,12 +8,12 @@ import * as fse from "fs-extra";
 import md5 from "md5";
 import * as path from "path";
 import which from "which";
-import {mavenOutputChannel} from "../mavenOutputChannel";
-import {mavenTerminal} from "../mavenTerminal";
-import {MavenProjectManager} from "../project/MavenProjectManager";
-import {Settings} from "../Settings";
-import {getPathToExtensionRoot, getPathToTempFolder, getPathToWorkspaceStorage} from "./contextUtils";
-import {updateLRUCommands} from "./historyUtils";
+import { mavenOutputChannel } from "../mavenOutputChannel";
+import { mavenTerminal } from "../mavenTerminal";
+import { MavenProjectManager } from "../project/MavenProjectManager";
+import { Settings } from "../Settings";
+import { getPathToExtensionRoot, getPathToTempFolder, getPathToWorkspaceStorage } from "./contextUtils";
+import { updateLRUCommands } from "./historyUtils";
 
 // calculate dependency graph
 const GOAL_DEPENDENCY_GRAPH = "com.github.ferstl:depgraph-maven-plugin:4.0.2:graph";

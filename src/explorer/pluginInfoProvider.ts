@@ -117,7 +117,10 @@ class PluginInfoProvider {
     ): Promise<{ prefix?: string; goals?: string[] }> {
         let prefix: string | undefined;
         const goals: string[] = [];
-        const textOutput: string = await Utils.getPluginDescription(this.getPluginId(gid, aid, version), projectBasePath);
+        const textOutput: string | undefined = await Utils.getPluginDescription(this.getPluginId(gid, aid, version), projectBasePath);
+        if (!textOutput || textOutput === undefined) {
+            return {};
+        }
 
         const versionRegExp = /^Version: (.*)/m;
         const versionMatch: string[] | null = textOutput.match(versionRegExp);

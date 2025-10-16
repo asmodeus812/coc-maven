@@ -44,7 +44,12 @@ export async function getDependencyTree(pomPathOrMavenProject: string | MavenPro
     }
 
     const task = async () => {
-        return await rawDependencyTree(pomPath);
+        try {
+            return await rawDependencyTree(pomPath);
+        } catch (error) {
+            coc.window.showErrorMessage(`Unable to resolve dependencies ${(error as Error).message}`);
+            throw error;
+        }
     };
     return await coc.window.withProgress({ title: "Computing dependency tree..." }, task);
 }

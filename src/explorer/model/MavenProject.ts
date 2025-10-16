@@ -22,8 +22,6 @@ import { MavenProfile } from "./MavenProfile";
 import { PluginsMenu } from "./PluginsMenu";
 import { ProfilesMenu } from "./ProfilesMenu";
 
-const CONTEXT_VALUE = "maven:project";
-
 export class MavenProject implements ITreeItem {
     public parent?: MavenProject; // assigned if it's specified as one of parent project's modules
     public pomPath: string;
@@ -327,10 +325,16 @@ export class MavenProject implements ITreeItem {
     }
 
     public async refreshProfiles() {
-        const output = await rawProfileList(this.pomPath);
-        if (output) {
-            const profiles = Utils.parseProfilesOutput(this, output);
-            this.profiles = profiles;
+        try {
+            const output = await rawProfileList(this.pomPath);
+            if (output) {
+                const profiles = Utils.parseProfilesOutput(this, output);
+                this.profiles = profiles;
+            }
+        } catch (error) {
+            coc.window.showErrorMessage(`Unable to refresh profiles ${(error as Error).message}`);
+            this.profiles = undefined;
+            throw error;
         }
     }
 }
