@@ -50,19 +50,24 @@ class PluginInfoProvider {
         }
 
         // get prefix from central/groupId/maven-metadata.xml
-        const metadataXml = await fetchPluginMetadataXml(gid);
-        const xml: any = await Utils.parseXmlContent(metadataXml);
-        const plugins: any[] = _.get(xml, "metadata.plugins[0].plugin");
-        plugins.forEach((plugin) => {
-            const a: string = _.get(plugin, "artifactId[0]");
-            const p: string = _.get(plugin, "prefix[0]");
-            infos[a] = infos[a] ?? {};
-            infos[a].prefix = p;
-        });
+        try {
+            const metadataXml = await fetchPluginMetadataXml(gid);
+            const xml: any = await Utils.parseXmlContent(metadataXml);
+            const plugins: any[] = _.get(xml, "metadata.plugins[0].plugin");
+            plugins.forEach((plugin) => {
+                const a: string = _.get(plugin, "artifactId[0]");
+                const p: string = _.get(plugin, "prefix[0]");
+                infos[a] = infos[a] ?? {};
+                infos[a].prefix = p;
+            });
 
-        // update cache
-        await this.udpatePluginInfoCache(gid, infos);
-        return infos[aid]?.prefix;
+            // update cache
+            await this.udpatePluginInfoCache(gid, infos);
+            return infos[aid]?.prefix;
+        } catch (error) {
+            console.warn((error as Error).message);
+            return `${gid}:${aid}`;
+        }
     }
 
     public async getPluginGoals(pomPath: string, groupId: string, artifactId: string, version: string): Promise<string[] | undefined> {
@@ -151,8 +156,8 @@ class PluginInfoProvider {
     }
 
     private getPluginId(gid: string, aid: string, version?: string): string {
-        const pluginVersion = version ? `:${version}` : "";
-        return `${gid}:${aid}${pluginVersion}`;
+        const finalPluginVersion = version ? `:${version}` : "";
+        return `${gid}:${aid}${finalPluginVersion}`;
     }
 }
 

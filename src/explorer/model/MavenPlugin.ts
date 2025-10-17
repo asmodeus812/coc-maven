@@ -62,8 +62,7 @@ export class MavenPlugin implements ITreeItem {
         if (this.prefix !== undefined) {
             return;
         }
-        const prefix = await pluginInfoProvider.getPluginPrefix(this.groupId, this.artifactId);
-        this.prefix = prefix;
+        this.prefix = await pluginInfoProvider.getPluginPrefix(this.groupId, this.artifactId);
     }
 
     private async fetchGoals(): Promise<void> {

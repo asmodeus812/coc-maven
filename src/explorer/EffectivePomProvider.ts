@@ -59,7 +59,7 @@ export class EffectivePomProvider {
         });
 
         if (!this.isCalculating) {
-            this.calculateEffectivePom(options).catch(console.error);
+            await this.calculateEffectivePom(options).catch(console.error);
         }
         return promise;
     }

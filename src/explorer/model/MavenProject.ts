@@ -231,7 +231,6 @@ export class MavenProject implements ITreeItem {
 
     private async _refreshPom(): Promise<void> {
         await this.parsePom();
-        await this.getEffectivePom();
         MavenExplorerProvider.getInstance().refresh(this);
     }
 
