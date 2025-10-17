@@ -69,6 +69,18 @@ Command Palette -> select `Maven: Update Maven Archetype Catalog`.
 
 ## Additional Configurations
 
+### Coc.nvim configuration
+
+Ensure that your local configuration is setup to associate the pom.xml files
+with xml language id, that would ensure that the extension is correctly enabled
+on pom files which are a subset of xml
+
+```lua
+vim.g.coc_filetype_map = {
+    ['pom.xml']      = 'xml',
+}
+```
+
 ### JAVA_HOME and Other Environment Variables
 
 This extension executes Maven by opening a terminal session and then calling

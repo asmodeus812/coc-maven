@@ -1,6 +1,6 @@
 {
     "name": "coc-maven",
-    "version": "0.0.3",
+    "version": "0.0.4",
     "description": "Coc extensions for maven",
     "author": "asmodeus812",
     "license": "MIT",
@@ -50,6 +50,194 @@
         "javaExtensions": [
             "./server/com.microsoft.java.maven.plugin.jar"
         ],
+        "configuration": {
+            "type": "object",
+            "title": "Maven",
+            "properties": {
+                "maven.settingsFile": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "default": null,
+                    "description": "Path to a custom Maven settings.xml file to use (overrides the default settings).",
+                    "scope": "machine"
+                },
+                "maven.excludedFolders": {
+                    "type": "array",
+                    "default": [
+                        "**/.*",
+                        "**/node_modules",
+                        "**/target",
+                        "**/bin",
+                        "**/archetype-resources"
+                    ],
+                    "description": "Glob patterns for folders to ignore in Maven project discovery and the Maven view.",
+                    "scope": "resource"
+                },
+                "maven.executable.preferMavenWrapper": {
+                    "type": "boolean",
+                    "default": "true",
+                    "description": "Prefer using the Maven Wrapper (mvnw) if present in the project.",
+                    "scope": "resource"
+                },
+                "maven.executable.path": {
+                    "type": "string",
+                    "default": "",
+                    "description": "Absolute path to the Maven executable to run (e.g., /usr/bin/mvn).",
+                    "scope": "machine"
+                },
+                "maven.executable.options": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    ],
+                    "default": "",
+                    "description": "Additional command-line options to pass to every Maven invocation (e.g., -T 1C, -Dmaven.test.skip=true).",
+                    "scope": "machine-overridable"
+                },
+                "maven.terminal.useJavaHome": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Run Maven using the JAVA_HOME configured in VS Code instead of the system default.",
+                    "scope": "window"
+                },
+                "maven.terminal.customEnv": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "title": "environment setting",
+                        "required": [
+                            "environmentVariable",
+                            "value"
+                        ],
+                        "properties": {
+                            "environmentVariable": {
+                                "type": "string",
+                                "minLength": 1,
+                                "description": "Name of the environment variable to set (e.g., MAVEN_OPTS)."
+                            },
+                            "value": {
+                                "type": "string",
+                                "description": "Value to assign to the environment variable."
+                            }
+                        }
+                    },
+                    "default": [],
+                    "description": "Environment variables to inject into the integrated terminal when running Maven.",
+                    "scope": "resource"
+                },
+                "maven.terminal.favorites": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "title": "Favorite commands",
+                        "required": [
+                            "command"
+                        ],
+                        "properties": {
+                            "alias": {
+                                "type": "string",
+                                "minLength": 1,
+                                "description": "Optional label shown for the favorite command."
+                            },
+                            "command": {
+                                "type": "string",
+                                "minLength": 1,
+                                "description": "Maven goals and options to run (omit the leading 'mvn')."
+                            },
+                            "debug": {
+                                "type": "boolean",
+                                "default": false,
+                                "description": "Run this favorite with Maven debug output (-X)."
+                            }
+                        }
+                    },
+                    "default": [
+                        {
+                            "alias": "Install without tests",
+                            "command": "install -DskipTests"
+                        },
+                        {
+                            "alias": "Build without tests",
+                            "command": "clean package -DskipTests"
+                        }
+                    ],
+                    "description": "Saved Maven commands that appear as quick actions in the terminal.",
+                    "scope": "resource"
+                },
+                "maven.view": {
+                    "type": "string",
+                    "enum": [
+                        "flat",
+                        "hierarchical"
+                    ],
+                    "default": "hierarchical",
+                    "scope": "window",
+                    "description": "Layout of the Maven Projects view: show modules as a flat list or as a nested hierarchy."
+                },
+                "maven.showInExplorerContextMenu": {
+                    "type": "boolean",
+                    "default": "true",
+                    "description": "Show Maven commands in the Explorer file/folder context menu.",
+                    "scope": "resource"
+                },
+                "maven.pomfile.globPattern": {
+                    "type": "string",
+                    "default": "**/pom.xml",
+                    "description": "Glob pattern used to resolve and distinguish a POM file. Used to enable various lsp capabilities for pom files.",
+                    "scope": "window"
+                },
+                "maven.pomfile.autoUpdateEffectivePOM": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Automatically recompute the Effective POM when a POM file changes.",
+                    "scope": "window"
+                },
+                "maven.pomfile.prefetchEffectivePom": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Precompute Effective POMs in the background to speed up Maven features.",
+                    "scope": "application"
+                },
+                "maven.dependency.enableConflictDiagnostics": {
+                    "type": "boolean",
+                    "default": "true",
+                    "description": "Enable diagnostics for dependency version and conflict issues in the dependency tree.",
+                    "scope": "window"
+                },
+                "maven.projectOpenBehavior": {
+                    "default": "Interactive",
+                    "type": "string",
+                    "scope": "window",
+                    "description": "Default action when prompted to open a detected Maven project.",
+                    "enum": [
+                        "Open",
+                        "Cancel"
+                    ]
+                },
+                "maven.explorer.projectName": {
+                    "default": "${project.name}",
+                    "type": "string",
+                    "scope": "window",
+                    "description": "Template for how project names are shown in the Maven view.",
+                    "enum": [
+                        "${project.name}",
+                        "${project.artifactId}",
+                        "${project.artifactId}-${project.version}",
+                        "${project.groupId}.${project.artifactId}",
+                        "${project.groupId}.${project.artifactId}-${project.version}"
+                    ]
+                }
+            }
+        },
         "commands": [
             {
                 "command": "maven.history",
@@ -94,195 +282,6 @@
             {
                 "command": "maven.project.configuration.update",
                 "title": "Update Java Project Configuration"
-            }
-        ],
-        "configuration": [
-            {
-                "title": "Maven",
-                "properties": {
-                    "maven.settingsFile": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "default": null,
-                        "description": "%configuration.maven.settingsFile%",
-                        "scope": "machine"
-                    },
-                    "maven.excludedFolders": {
-                        "type": "array",
-                        "default": [
-                            "**/.*",
-                            "**/node_modules",
-                            "**/target",
-                            "**/bin",
-                            "**/archetype-resources"
-                        ],
-                        "description": "%configuration.maven.excludedFolders%",
-                        "scope": "resource"
-                    },
-                    "maven.executable.preferMavenWrapper": {
-                        "type": "boolean",
-                        "default": "true",
-                        "description": "%configuration.maven.executable.preferMavenWrapper%",
-                        "scope": "resource"
-                    },
-                    "maven.executable.path": {
-                        "type": "string",
-                        "default": "",
-                        "description": "%configuration.maven.executable.path%",
-                        "scope": "machine"
-                    },
-                    "maven.executable.options": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "array",
-                                "items": {
-                                    "type": "string"
-                                }
-                            }
-                        ],
-                        "default": "",
-                        "description": "%configuration.maven.executable.options%",
-                        "scope": "machine-overridable"
-                    },
-                    "maven.terminal.useJavaHome": {
-                        "type": "boolean",
-                        "default": false,
-                        "description": "%configuration.maven.terminal.useJavaHome%",
-                        "scope": "window"
-                    },
-                    "maven.terminal.customEnv": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "title": "environment setting",
-                            "required": [
-                                "environmentVariable",
-                                "value"
-                            ],
-                            "properties": {
-                                "environmentVariable": {
-                                    "type": "string",
-                                    "minLength": 1,
-                                    "description": "%configuration.maven.terminal.customEnv.environmentVariable%"
-                                },
-                                "value": {
-                                    "type": "string",
-                                    "description": "%configuration.maven.terminal.customEnv.value%"
-                                }
-                            }
-                        },
-                        "default": [],
-                        "description": "%configuration.maven.terminal.customEnv%",
-                        "scope": "resource"
-                    },
-                    "maven.terminal.favorites": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "title": "Favorite commands",
-                            "required": [
-                                "command"
-                            ],
-                            "properties": {
-                                "alias": {
-                                    "type": "string",
-                                    "minLength": 1,
-                                    "description": "%configuration.maven.terminal.favorites.alias%"
-                                },
-                                "command": {
-                                    "type": "string",
-                                    "minLength": 1,
-                                    "description": "%configuration.maven.terminal.favorites.command%"
-                                },
-                                "debug": {
-                                    "type": "boolean",
-                                    "default": false,
-                                    "description": "%configuration.maven.terminal.favorites.debug%"
-                                }
-                            }
-                        },
-                        "default": [
-                            {
-                                "alias": "Install without tests",
-                                "command": "install -DskipTests"
-                            },
-                            {
-                                "alias": "Build without tests",
-                                "command": "clean package -DskipTests"
-                            }
-                        ],
-                        "description": "%configuration.maven.terminal.favorites%",
-                        "scope": "resource"
-                    },
-                    "maven.view": {
-                        "type": "string",
-                        "enum": [
-                            "flat",
-                            "hierarchical"
-                        ],
-                        "default": "hierarchical",
-                        "scope": "window",
-                        "description": "%configuration.maven.view%"
-                    },
-                    "maven.showInExplorerContextMenu": {
-                        "type": "boolean",
-                        "default": "true",
-                        "description": "%configuration.maven.showInExplorerContextMenu%",
-                        "scope": "resource"
-                    },
-                    "maven.pomfile.globPattern": {
-                        "type": "string",
-                        "default": "**/pom.xml",
-                        "description": "%configuration.maven.pomfile.globPattern%",
-                        "scope": "window"
-                    },
-                    "maven.pomfile.autoUpdateEffectivePOM": {
-                        "type": "boolean",
-                        "default": false,
-                        "description": "%configuration.maven.pomfile.autoUpdateEffectivePOM%",
-                        "scope": "window"
-                    },
-                    "maven.pomfile.prefetchEffectivePom": {
-                        "type": "boolean",
-                        "default": false,
-                        "description": "%configuration.maven.pomfile.prefetchEffectivePom%",
-                        "scope": "application"
-                    },
-                    "maven.dependency.enableConflictDiagnostics": {
-                        "type": "boolean",
-                        "default": "true",
-                        "description": "%configuration.maven.dependency.enableConflictDiagnostics%",
-                        "scope": "window"
-                    },
-                    "maven.projectOpenBehavior": {
-                        "default": "Interactive",
-                        "type": "string",
-                        "scope": "window",
-                        "description": "%configuration.maven.projectOpenBehavior%",
-                        "enum": [
-                            "Open",
-                            "Cancel"
-                        ]
-                    },
-                    "maven.explorer.projectName": {
-                        "default": "${project.name}",
-                        "type": "string",
-                        "scope": "window",
-                        "description": "%configuration.maven.explorer.projectName%",
-                        "enum": [
-                            "${project.name}",
-                            "${project.artifactId}",
-                            "${project.artifactId}-${project.version}",
-                            "${project.groupId}.${project.artifactId}",
-                            "${project.groupId}.${project.artifactId}-${project.version}"
-                        ]
-                    }
-                }
             }
         ]
     }
