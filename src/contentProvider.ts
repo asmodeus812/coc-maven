@@ -9,10 +9,10 @@ import { MavenProjectManager } from "./project/MavenProjectManager";
 import { Utils } from "./utils/Utils";
 
 /**
- * URI patterns.
+ * URI patterns and authorities.
  * coc-maven://dependencies/<pom-path>/Dependencies?<pom-path>
  * coc-maven://effective-pom/<pom-path>/EffectivePOM.xml?<pom-path>
- * coc-maven:///<pom-path-in-local-maven-repository>
+ * coc-maven://local-repository/<pom-path-in-local-maven-repository>
  */
 class MavenContentProvider implements coc.TextDocumentContentProvider {
     public readonly onDidChange: coc.Event<coc.Uri>;
@@ -47,7 +47,7 @@ class MavenContentProvider implements coc.TextDocumentContentProvider {
             }
             case "local-repository": {
                 const fsUri = uri.with({ scheme: "file", authority: "" });
-                return await coc.workspace.readFile(fsUri.fsPath);
+                return await coc.workspace.readFile(fsUri.toString());
             }
             default:
         }

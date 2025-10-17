@@ -47,7 +47,7 @@ class DiagnosticProvider {
     public async refreshDiagnostics(uri: coc.Uri): Promise<void> {
         const diagnostics: coc.Diagnostic[] = [];
         if (Settings.enableConflictDiagnostics() === false) {
-            this._collection?.set(uri.fsPath, diagnostics);
+            this._collection?.set(uri.toString(), diagnostics);
             return;
         }
         const project: MavenProject | undefined = MavenProjectManager.get(uri.fsPath);

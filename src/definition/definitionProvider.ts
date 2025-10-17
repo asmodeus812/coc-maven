@@ -79,9 +79,10 @@ function getParentDefinitionLinkFromRelativePath(parentNode: Element, document: 
             parentNode && parentNode.endIndex !== null ? document.positionAt(parentNode.endIndex) : position
         );
         const definitionLink: coc.LocationLink = {
+            targetSelectionRange: coc.Range.create(0, 0, 0, 0),
             targetRange: coc.Range.create(0, 0, 0, 0),
-            targetUri: coc.Uri.parse(parentPomPath).fsPath,
-            originSelectionRange: originSelectionRange
+            originSelectionRange: originSelectionRange,
+            targetUri: coc.Uri.parse(parentPomPath).toString()
         } as coc.LocationLink;
         return [definitionLink];
     }
@@ -111,8 +112,9 @@ function getDependencyDefinitionLink(dependencyOrPluginNode: Element, document: 
             const pomPath: string = localPomPath(groupIdHint, artifactIdHint, version);
             if (existsSync(pomPath)) {
                 const definitionLink: coc.LocationLink = {
+                    targetSelectionRange: coc.Range.create(0, 0, 0, 0),
                     targetRange: coc.Range.create(0, 0, 0, 0),
-                    targetUri: coc.Uri.file(pomPath).with({ scheme: "coc-maven", authority: "local-repository" }).fsPath,
+                    targetUri: coc.Uri.file(pomPath).with({ scheme: "coc-maven", authority: "local-repository" }).toString(),
                     originSelectionRange: selectionRange
                 } as coc.LocationLink;
                 return [definitionLink];
@@ -123,8 +125,9 @@ function getDependencyDefinitionLink(dependencyOrPluginNode: Element, document: 
                 for (const p of pomPaths) {
                     if (existsSync(p)) {
                         links.push({
+                            targetSelectionRange: coc.Range.create(0, 0, 0, 0),
                             targetRange: coc.Range.create(0, 0, 0, 0),
-                            targetUri: coc.Uri.file(p).with({ scheme: "coc-maven", authority: "local-repository" }).fsPath,
+                            targetUri: coc.Uri.file(p).with({ scheme: "coc-maven", authority: "local-repository" }).toString(),
                             originSelectionRange: selectionRange
                         } as coc.LocationLink);
                     }
@@ -144,8 +147,9 @@ function getModuleDefinitionLink(moduleNode: Element, document: coc.TextDocument
         moduleNode && moduleNode.endIndex !== null ? document.positionAt(moduleNode.endIndex) : position
     );
     const definitionLink: coc.LocationLink = {
+        targetSelectionRange: coc.Range.create(0, 0, 0, 0),
         targetRange: coc.Range.create(0, 0, 0, 0),
-        targetUri,
+        targetUri: targetUri.toString(),
         originSelectionRange: selectionRange
     } as coc.LocationLink;
     return [definitionLink];
