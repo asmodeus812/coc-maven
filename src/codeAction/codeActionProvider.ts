@@ -13,11 +13,7 @@ class CodeActionProvider implements coc.CodeActionProvider {
         const addDependencyCommand: coc.Command = {
             title: "Add dependency from Maven Central...",
             command: "maven.project.addDependency",
-            arguments: [
-                {
-                    pomPath: coc.Uri.parse(document.uri).fsPath
-                }
-            ]
+            arguments: [{ pomPath: coc.Uri.parse(document.uri).fsPath }]
         };
         return [
             {

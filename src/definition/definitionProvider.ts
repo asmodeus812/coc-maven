@@ -141,7 +141,8 @@ function getDependencyDefinitionLink(dependencyOrPluginNode: Element, document: 
 
 function getModuleDefinitionLink(moduleNode: Element, document: coc.TextDocument, position: coc.Position) {
     const moduleName = getTextFromNode(moduleNode.firstChild);
-    const targetUri = path.join(coc.Uri.parse(document.uri).fsPath, "..", moduleName, "pom.xml");
+    const documentUri: coc.Uri = coc.Uri.parse(document.uri);
+    const targetUri = path.join(documentUri.fsPath, "..", moduleName, "pom.xml");
     const selectionRange: coc.Range = coc.Range.create(
         moduleNode && moduleNode.startIndex !== null ? document.positionAt(moduleNode.startIndex) : position,
         moduleNode && moduleNode.endIndex !== null ? document.positionAt(moduleNode.endIndex) : position
@@ -149,7 +150,7 @@ function getModuleDefinitionLink(moduleNode: Element, document: coc.TextDocument
     const definitionLink: coc.LocationLink = {
         targetSelectionRange: coc.Range.create(0, 0, 0, 0),
         targetRange: coc.Range.create(0, 0, 0, 0),
-        targetUri: targetUri.toString(),
+        targetUri: coc.Uri.parse(targetUri).toString(),
         originSelectionRange: selectionRange
     } as coc.LocationLink;
     return [definitionLink];

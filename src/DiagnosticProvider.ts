@@ -63,7 +63,7 @@ class DiagnosticProvider {
                 this.map.set(diagnostic, node);
             }
         }
-        this._collection?.set(uri.fsPath, diagnostics);
+        this._collection?.set(uri.toString(), diagnostics);
     }
 
     public async createDiagnostics(node: Dependency): Promise<coc.Diagnostic | undefined> {

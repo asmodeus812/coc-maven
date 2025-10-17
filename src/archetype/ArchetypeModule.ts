@@ -299,7 +299,7 @@ async function updateParentPom(parentPomPath: string, subModuleName: string): Pr
                 ),
                 "<packaging>pom</packaging>"
             );
-            edit[parentPomUri.fsPath] = [textEdit].concat(edit[parentPomUri.fsPath] || []);
+            edit[parentPomUri.toString()] = [textEdit].concat(edit[parentPomUri.toString()] || []);
         }
         nextInsertOffset = packagingNodes[0].endIndex ? packagingNodes[0].endIndex + 1 : nextInsertOffset;
     } else {
@@ -307,7 +307,7 @@ async function updateParentPom(parentPomPath: string, subModuleName: string): Pr
             pomDocument.positionAt(nextInsertOffset),
             `\n${genIndent(indentInfo.indentChar, indentInfo.indent)}<packaging>pom</packaging>`
         );
-        edit[parentPomUri.fsPath] = [textEdit].concat(edit[parentPomUri.fsPath] || []);
+        edit[parentPomUri.toString()] = [textEdit].concat(edit[parentPomUri.toString()] || []);
     }
 
     // Add new module as a child module of parent pom.
@@ -321,7 +321,7 @@ async function updateParentPom(parentPomPath: string, subModuleName: string): Pr
                 pomDocument.positionAt(nextInsertOffset),
                 `\n${genIndent(indentInfo.indentChar, indentInfo.indent * 2)}<module>${subModuleName}</module>`
             );
-            edit[parentPomUri.fsPath] = [textEdit].concat(edit[parentPomUri.fsPath] || []);
+            edit[parentPomUri.toString()] = [textEdit].concat(edit[parentPomUri.toString()] || []);
         } else {
             const textEdit: coc.TextEdit = coc.TextEdit.replace(
                 coc.Range.create(
@@ -332,7 +332,7 @@ async function updateParentPom(parentPomPath: string, subModuleName: string): Pr
                     `${genIndent(indentInfo.indentChar, indentInfo.indent * 2)}<module>${subModuleName}</module>\n` +
                     `${genIndent(indentInfo.indentChar, indentInfo.indent)}</modules>`
             );
-            edit[parentPomUri.fsPath] = [textEdit].concat(edit[parentPomUri.fsPath] || []);
+            edit[parentPomUri.toString()] = [textEdit].concat(edit[parentPomUri.toString()] || []);
         }
     } else {
         const textEdit: coc.TextEdit = coc.TextEdit.insert(
@@ -341,7 +341,7 @@ async function updateParentPom(parentPomPath: string, subModuleName: string): Pr
                 `${genIndent(indentInfo.indentChar, indentInfo.indent * 2)}<module>${subModuleName}</module>\n` +
                 `${genIndent(indentInfo.indentChar, indentInfo.indent)}</modules>`
         );
-        edit[parentPomUri.fsPath] = [textEdit].concat(edit[parentPomUri.fsPath] || []);
+        edit[parentPomUri.toString()] = [textEdit].concat(edit[parentPomUri.toString()] || []);
     }
 
     await coc.workspace.applyEdit(edit);
