@@ -1,6 +1,6 @@
 {
     "name": "coc-maven",
-    "version": "0.0.13",
+    "version": "0.0.14",
     "description": "Coc extensions for maven",
     "author": "asmodeus812",
     "license": "MIT",
