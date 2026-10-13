@@ -10,7 +10,7 @@ import { ArchetypeModule } from "./archetype/ArchetypeModule";
 import { codeActionProvider } from "./codeAction/codeActionProvider";
 import { ConflictResolver, conflictResolver } from "./codeAction/conflictResolver";
 import { completionProvider } from "./completion/PomCompletionProvider";
-import { DEFAULT_MAVEN_LIFECYCLES } from "./completion/constants";
+import { COMMAND_COMPLETION_ITEM_SELECTED, DEFAULT_MAVEN_LIFECYCLES } from "./completion/constants";
 import { contentProvider } from "./contentProvider";
 import { definitionProvider } from "./definition/definitionProvider";
 import { MavenExplorerProvider } from "./explorer/MavenExplorerProvider";
@@ -203,6 +203,8 @@ export async function doActivate(context: coc.ExtensionContext): Promise<void> {
     registerCommand(context, "maven.explorer.excludeDependency", excludeDependencyHandler, true);
     registerCommand(context, "maven.explorer.goToDefinition", jumpToDefinitionHandler, true);
     registerCommand(context, "maven.explorer.goToEffective", Utils.showEffectivePom, true);
+    // completion items carry this command for telemetry upstream, there is nothing to report here
+    registerCommand(context, COMMAND_COMPLETION_ITEM_SELECTED, () => undefined, true);
     registerCommand(context, "maven.explorer.favorites", runFavoriteCommandsHandler, true);
 
     // Free resources when a terminal is manually closed
