@@ -167,10 +167,7 @@ async function parseMetadataFromJar(groupId: string, artifactId: string, version
     const jarFilePath = path.join(getMavenLocalRepository(), ...groupId.split("."), artifactId, version, `${artifactId}-${version}.jar`);
     try {
         await fs.promises.access(jarFilePath);
-        const jarUri = coc.Uri.file(jarFilePath);
-        const segs = "META-INF/maven/plugin.xml".split("/");
-
-        const xml = await readContentFromJar(jarUri, ...segs);
+        const xml = await readContentFromJar(jarFilePath, "META-INF/maven/plugin.xml");
         const xmlObj = xml && (await Utils.parseXmlContent(xml));
         const goalPrefix: any = _.get(xmlObj, "plugin.goalPrefix[0]");
         const mojos = _.get(xmlObj, "plugin.mojos[0].mojo");
