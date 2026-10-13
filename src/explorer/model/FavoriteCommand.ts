@@ -10,7 +10,7 @@ export class FavoriteCommand implements ITreeItem {
     constructor(
         public project: MavenProject,
         public command: string,
-        public alias: string,
+        public alias?: string,
         public debug?: boolean
     ) {}
 
@@ -19,7 +19,7 @@ export class FavoriteCommand implements ITreeItem {
     }
 
     getTreeItem(): TreeItem | coc.Thenable<TreeItem> {
-        const treeItem: coc.TreeItem = new coc.TreeItem(this.alias, coc.TreeItemCollapsibleState.None);
+        const treeItem: coc.TreeItem = new coc.TreeItem(this.alias ?? this.command, coc.TreeItemCollapsibleState.None);
         treeItem.description = `(${this.command})`;
         treeItem.command = {
             title: "Execute favorite command",

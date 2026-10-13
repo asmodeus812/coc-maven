@@ -76,8 +76,7 @@ export class Settings {
         }
 
         public static favorites(project: MavenProject): FavoriteCommand[] | undefined {
-            type Favorite = { alias: string; command: string; debug?: boolean };
-            return _getMavenSection<Favorite[]>("terminal.favorites", coc.Uri.file(project.pomPath))?.map(
+            return _getMavenSection<FavoriteFormat[]>("terminal.favorites", coc.Uri.file(project.pomPath))?.map(
                 (favorite) => new FavoriteCommand(project, favorite.command, favorite.alias, favorite.debug)
             );
         }
