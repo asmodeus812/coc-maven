@@ -9,6 +9,7 @@ import { mavenOutputChannel } from "./mavenOutputChannel";
 
 type FavoriteFormat = { alias?: string; command: string; debug?: boolean };
 type EnvironmentSetting = { environmentVariable: string; value: string };
+let loggedJavaHome: string | undefined;
 export class Settings {
     public static excludedFolders(resource: Uri): string[] {
         const ret: string[] | undefined = _getMavenSection<string[]>("excludedFolders", resource);
@@ -110,7 +111,8 @@ export class Settings {
         if (environmentSettings) {
             environmentSettings.forEach((s: EnvironmentSetting) => {
                 customEnv[s.environmentVariable] = s.value;
-                if (s.environmentVariable === "JAVA_HOME") {
+                if (s.environmentVariable === "JAVA_HOME" && s.value !== loggedJavaHome) {
+                    loggedJavaHome = s.value;
                     mavenOutputChannel.appendLine(`Using JAVA_HOME=${s.value} (source: maven.terminal.customEnv)`);
                 }
             });
