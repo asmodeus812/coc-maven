@@ -84,7 +84,7 @@
                     "type": "string",
                     "default": "",
                     "description": "Absolute path to the Maven executable to run (e.g., /usr/bin/mvn).",
-                    "scope": "machine"
+                    "scope": "machine-overridable"
                 },
                 "maven.executable.options": {
                     "anyOf": [
