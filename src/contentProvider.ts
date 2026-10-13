@@ -2,10 +2,13 @@
 // Licensed under the MIT license.
 
 import * as coc from "coc.nvim";
+import * as fse from "fs-extra";
+import * as path from "path";
 import { IEffectivePom } from "./explorer/model/IEffectivePom";
 import { MavenProject } from "./explorer/model/MavenProject";
 import { getDependencyTree } from "./handlers/dependency/showDependenciesHandler";
 import { MavenProjectManager } from "./project/MavenProjectManager";
+import { UserError } from "./utils/errorUtils";
 import { Utils } from "./utils/Utils";
 
 /**
@@ -33,6 +36,10 @@ class MavenContentProvider implements coc.TextDocumentContentProvider {
         }
 
         const pomPath = uri.query;
+        if (uri.authority === "dependencies" || uri.authority === "effective-pom") {
+            // these documents run maven against the pom from the query, only accept real pom files on disk
+            await validatePomPath(pomPath);
+        }
         switch (uri.authority) {
             case "dependencies":
                 return getDependencyTree(pomPath);
@@ -52,6 +59,18 @@ class MavenContentProvider implements coc.TextDocumentContentProvider {
             default:
         }
         return undefined;
+    }
+}
+
+async function validatePomPath(pomPath: string): Promise<void> {
+    if (!path.isAbsolute(pomPath)) {
+        throw new UserError(`Maven content requires an absolute POM path, got: ${pomPath}`);
+    }
+    const stat: fse.Stats = await fse.stat(pomPath).catch(() => {
+        throw new UserError(`The requested POM ${pomPath} does not exist.`);
+    });
+    if (!stat.isFile()) {
+        throw new UserError(`The requested POM ${pomPath} is not a file.`);
     }
 }
 
