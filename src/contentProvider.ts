@@ -20,6 +20,7 @@ import { Utils } from "./utils/Utils";
 class MavenContentProvider implements coc.TextDocumentContentProvider {
     public readonly onDidChange: coc.Event<coc.Uri>;
     private readonly _onDidChangeEmitter: coc.Emitter<coc.Uri>;
+    private readonly _contents: Map<string, string> = new Map();
 
     constructor() {
         this._onDidChangeEmitter = new coc.Emitter<coc.Uri>();
@@ -31,6 +32,28 @@ class MavenContentProvider implements coc.TextDocumentContentProvider {
     }
 
     public async provideTextDocumentContent(uri: coc.Uri, _token: coc.CancellationToken): Promise<string | undefined> {
+        const key: string = uri.toString();
+        try {
+            const content: string | undefined = await this.computeContent(uri);
+            if (content !== undefined) {
+                this._contents.set(key, content);
+            }
+            return content;
+        } catch (error) {
+            // an already open document (e.g. after a restart of the extension host) still holds the last good content
+            const opened: string | undefined = coc.workspace.getDocument(key)?.textDocument.getText();
+            const previous: string | undefined = this._contents.get(key) ?? (opened ? opened : undefined);
+            if (previous === undefined) {
+                throw error;
+            }
+            // refreshing an already open document failed (e.g. the pom is being edited and is not valid yet), keep the
+            // previous content instead of failing, coc does not handle rejected refreshes
+            coc.window.showWarningMessage(`Unable to refresh ${uri.authority}, keeping previous content: ${(error as Error).message}`);
+            return previous;
+        }
+    }
+
+    private async computeContent(uri: coc.Uri): Promise<string | undefined> {
         if (uri.scheme !== "coc-maven") {
             throw new Error(`Scheme ${uri.scheme} not supported by this content provider.`);
         }
