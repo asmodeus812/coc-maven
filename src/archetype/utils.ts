@@ -38,7 +38,7 @@ export async function importProjectOnDemand(projectFolder: string) {
         return;
     }
 
-    if (!coc.workspace.workspaceFolders?.some((wf) => projectFolder.startsWith(wf.uri))) {
+    if (!coc.workspace.workspaceFolders?.some((wf) => projectFolder.startsWith(coc.Uri.parse(wf.uri).fsPath))) {
         return;
     }
 
@@ -48,7 +48,7 @@ export async function importProjectOnDemand(projectFolder: string) {
     } else if (projectImportStrategy === "manual") {
         coc.commands.executeCommand<void>(
             "java.project.changeImportedProjects",
-            [coc.Uri.parse(path.join(projectFolder, "pom.xml")).toString()],
+            [coc.Uri.file(path.join(projectFolder, "pom.xml")).toString()],
             [],
             []
         );
