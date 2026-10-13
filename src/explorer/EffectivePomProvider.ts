@@ -1,66 +1,51 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT license.
 
-import { EventEmitter } from "events";
 import { rawEffectivePom } from "../utils/mavenUtils";
 import { Utils } from "../utils/Utils";
 import { IEffectivePom } from "./model/IEffectivePom";
 
 export class EffectivePomProvider {
     private readonly pomPath: string;
-    private readonly emitter: EventEmitter = new EventEmitter();
-    private isCalculating = false;
+    private calculation?: {
+        cacheOnly: boolean;
+        promise: Promise<IEffectivePom | undefined>;
+    };
 
     constructor(pomPath: string) {
         this.pomPath = pomPath;
-        this.emitter.on("complete", (_resp: IEffectivePom) => {
-            this.isCalculating = false;
-        });
-        this.emitter.on("error", (_error) => {
-            this.isCalculating = false;
-        });
     }
 
-    public async calculateEffectivePom(options?: { cacheOnly?: boolean }): Promise<void> {
-        if (this.isCalculating) {
-            return new Promise<void>((resolve, reject) => {
-                this.emitter.once("complete", resolve);
-                this.emitter.once("error", reject);
-            });
-        }
-
+    private async readEffectivePom(options: { cacheOnly?: boolean }): Promise<IEffectivePom | undefined> {
         const pomPath: string = this.pomPath;
-        try {
-            this.isCalculating = true;
-            const ePomString: string | undefined = await rawEffectivePom(pomPath, options);
-            if (ePomString === undefined) {
-                this.emitter.emit("complete", undefined);
-            } else {
-                const ePom: any = await Utils.parseXmlContent(ePomString);
-                this.emitter.emit("complete", {
-                    pomPath,
-                    ePomString,
-                    ePom
-                });
-            }
-        } catch (error) {
-            this.emitter.emit("error", error);
+        const ePomString: string | undefined = await rawEffectivePom(pomPath, options);
+        if (ePomString === undefined) {
+            return undefined;
         }
+        const ePom: unknown = await Utils.parseXmlContent(ePomString);
+        return { pomPath, ePomString, ePom };
     }
 
-    public async getEffectivePom(options?: { cacheOnly?: boolean }): Promise<IEffectivePom> {
-        const promise: Promise<IEffectivePom> = new Promise<IEffectivePom>((resolve, reject) => {
-            this.emitter.once("complete", (resp: IEffectivePom) => {
-                resolve(resp);
-            });
-            this.emitter.once("error", (error) => {
-                reject(error as Error);
-            });
-        });
-
-        if (!this.isCalculating) {
-            await this.calculateEffectivePom(options).catch(console.error);
+    /**
+     * Concurrent requests with the same options share the same in-flight calculation, requests with different options wait
+     * for the in-flight calculation to settle first, its result or failure belongs to its own callers.
+     */
+    public async getEffectivePom(options?: { cacheOnly?: boolean }): Promise<IEffectivePom | undefined> {
+        const cacheOnly = options?.cacheOnly === true;
+        while (this.calculation) {
+            const current = this.calculation;
+            if (current.cacheOnly === cacheOnly) {
+                return current.promise;
+            }
+            await Promise.allSettled([current.promise]);
         }
-        return promise;
+
+        const promise = this.readEffectivePom({ cacheOnly });
+        this.calculation = { cacheOnly, promise };
+        try {
+            return await promise;
+        } finally {
+            this.calculation = undefined;
+        }
     }
 }

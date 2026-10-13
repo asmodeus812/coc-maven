@@ -190,9 +190,9 @@ export class MavenProject implements ITreeItem {
         await this.getEffectivePom();
     }
 
-    public async getEffectivePom(options?: { cacheOnly?: boolean }): Promise<IEffectivePom> {
+    public async getEffectivePom(options?: { cacheOnly?: boolean }): Promise<IEffectivePom | undefined> {
         try {
-            let result: IEffectivePom = await this.ePomProvider.getEffectivePom(options);
+            const result: IEffectivePom | undefined = await this.ePomProvider.getEffectivePom(options);
             this._ePom = result?.ePom;
             return result;
         } catch (error) {
