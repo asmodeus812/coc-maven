@@ -3,6 +3,7 @@
 
 import { Node } from "domhandler";
 import * as coc from "coc.nvim";
+import { Settings } from "../Settings";
 import { isXmlExtensionEnabled } from "../utils/extensionUtils";
 import { getCurrentNode } from "../utils/lexerUtils";
 import { ArtifactProvider } from "./providers/ArtifactProvider";
@@ -14,10 +15,12 @@ import { settledAll } from "./utils";
 
 export class PomCompletionProvider implements coc.CompletionItemProvider {
     private readonly genericProviders: IXmlCompletionProvider[];
+    private readonly artifactProvider: IXmlCompletionProvider;
     private readonly schemaProvider: IXmlCompletionProvider;
 
     constructor() {
-        this.genericProviders = [new SnippetProvider(), new ArtifactProvider(), new PropertiesProvider()];
+        this.genericProviders = [new SnippetProvider(), new PropertiesProvider()];
+        this.artifactProvider = new ArtifactProvider();
         this.schemaProvider = new SchemaProvider();
     }
 
@@ -38,6 +41,10 @@ export class PomCompletionProvider implements coc.CompletionItemProvider {
         }
 
         const providers: IXmlCompletionProvider[] = [...this.genericProviders];
+        // the artifact provider queries remote services, allow users to opt out of the GAV completions
+        if (Settings.isGAVCompletionEnabled()) {
+            providers.push(this.artifactProvider);
+        }
         if (!isXmlExtensionEnabled()) {
             providers.push(this.schemaProvider);
         }

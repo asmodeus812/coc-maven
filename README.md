@@ -111,7 +111,10 @@ same as upstream. Use `maven.terminal.customEnv` to point Maven at a specific
 JDK. The variables are exported before every command sent to the Maven
 terminal, so values set by shell startup files do not override them.
 
+### GAV completions
 
+Completions for `groupId`, `artifactId` and `version` in pom files query Maven
+Central. Set `"maven.completion.gavEnabled": false` to disable them.
 
 ### Default Options for Maven Command
 

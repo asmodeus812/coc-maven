@@ -53,6 +53,12 @@
             "type": "object",
             "title": "Maven",
             "properties": {
+                "maven.completion.gavEnabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable GAV (GroupId, ArtifactId, Version) completions in pom.xml, these query the remote Maven Central search service.",
+                    "scope": "window"
+                },
                 "maven.settingsFile": {
                     "type": [
                         "string",
