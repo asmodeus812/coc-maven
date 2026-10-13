@@ -12,7 +12,6 @@ import * as xml2js from "xml2js";
 import { DEFAULT_MAVEN_LIFECYCLES } from "../completion/constants";
 import { MavenProfile } from "../explorer/model/MavenProfile";
 import { MavenProject } from "../explorer/model/MavenProject";
-import { MavenProjectManager } from "../project/MavenProjectManager";
 import { getExtensionVersion, getPathToTempFolder, getPathToWorkspaceStorage } from "./contextUtils";
 import { MavenNotFoundError, UserError } from "./errorUtils";
 import { getLRUCommands, ICommandHistoryEntry } from "./historyUtils";
@@ -215,16 +214,8 @@ export class Utils {
         }
     }
 
-    public static async executeMavenCommand(node?: MavenProject | string): Promise<void> {
-        let selectedProject: MavenProject | undefined;
+    public static async executeMavenCommand(selectedProject?: MavenProject): Promise<void> {
         let selectedCommand: string | undefined;
-        if (node instanceof MavenProject) {
-            selectedProject = node;
-        } else if (typeof node === "string") {
-            selectedProject = MavenProjectManager.get(node);
-        }
-        selectedProject ??= await selectProjectIfNecessary();
-
         if (!selectedProject) {
             return;
         }

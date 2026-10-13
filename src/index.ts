@@ -139,7 +139,7 @@ export async function doActivate(context: coc.ExtensionContext): Promise<void> {
     registerCommand(context, "maven.goal.custom", async (node?: string | MavenProject, goal?: string, env?: { [key: string]: string }) => {
         return await Utils.executeCustomGoal(await resolveProject(node), goal, env);
     });
-    registerCommand(context, "maven.goal.execute", async (node?: string | MavenProject) => await Utils.executeMavenCommand(node));
+    registerCommand(context, "maven.goal.execute", async (node?: string | MavenProject) => await Utils.executeMavenCommand(await resolveProject(node)));
     registerCommand(context, "maven.favorites", async (node?: string | MavenProject) => await runFavoriteCommandsHandler(await resolveProject(node)));
     registerCommand(context, "maven.lifecycle.execute", executeLifecyclePhaseHandler);
     DEFAULT_MAVEN_LIFECYCLES.forEach((goal: string) => {
