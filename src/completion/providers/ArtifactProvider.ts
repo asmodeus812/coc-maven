@@ -5,6 +5,7 @@ import { Element, isTag, Node } from "domhandler";
 import * as _ from "lodash";
 import * as coc from "coc.nvim";
 import { getTextFromNode, XmlTagName } from "../../utils/lexerUtils";
+import { settledAll } from "../utils";
 import { FromCentral } from "./artifact/FromCentral";
 import { FromIndex } from "./artifact/FromIndex";
 import { FromLocal } from "./artifact/FromLocal";
@@ -22,7 +23,7 @@ export class ArtifactProvider implements IXmlCompletionProvider {
         this.localProvider = new FromLocal();
     }
 
-    async provide(document: coc.TextDocument, position: coc.Position, currentNode: Node): Promise<coc.CompletionItem[]> {
+    async provide(document: coc.TextDocument, position: coc.Position, currentNode: Node, token?: coc.CancellationToken): Promise<coc.CompletionItem[]> {
         let tagNode: Element | undefined;
         if (isTag(currentNode)) {
             tagNode = currentNode;
@@ -50,9 +51,11 @@ export class ArtifactProvider implements IXmlCompletionProvider {
                 const groupIdHint: string = getTextFromNode(groupIdTextNode);
                 const artifactIdHint: string = getTextFromNode(artifactIdTextNode);
 
-                const centralItems: coc.CompletionItem[] = await this.centralProvider.getGroupIdCandidates(groupIdHint, artifactIdHint);
-                const indexItems: coc.CompletionItem[] = await this.indexProvider.getGroupIdCandidates(groupIdHint, artifactIdHint);
-                const localItems: coc.CompletionItem[] = await this.localProvider.getGroupIdCandidates(groupIdHint);
+                const [centralItems, indexItems, localItems] = await settledAll([
+                    this.centralProvider.getGroupIdCandidates(groupIdHint, artifactIdHint, token),
+                    this.indexProvider.getGroupIdCandidates(groupIdHint, artifactIdHint),
+                    this.localProvider.getGroupIdCandidates(groupIdHint)
+                ]);
                 const mergedItems: coc.CompletionItem[] = _.unionBy(
                     centralItems,
                     indexItems,
@@ -78,9 +81,11 @@ export class ArtifactProvider implements IXmlCompletionProvider {
                 const groupIdHint: string = getTextFromNode(groupIdTextNode);
                 const artifactIdHint: string = getTextFromNode(artifactIdTextNode);
 
-                const centralItems: coc.CompletionItem[] = await this.centralProvider.getArtifactIdCandidates(groupIdHint, artifactIdHint);
-                const indexItems: coc.CompletionItem[] = await this.indexProvider.getArtifactIdCandidates(groupIdHint, artifactIdHint);
-                const localItems: coc.CompletionItem[] = await this.localProvider.getArtifactIdCandidates(groupIdHint);
+                const [centralItems, indexItems, localItems] = await settledAll([
+                    this.centralProvider.getArtifactIdCandidates(groupIdHint, artifactIdHint, token),
+                    this.indexProvider.getArtifactIdCandidates(groupIdHint, artifactIdHint),
+                    this.localProvider.getArtifactIdCandidates(groupIdHint)
+                ]);
                 let mergedItems: coc.CompletionItem[] = [];
 
                 const ID_SEPARATOR = ":";
@@ -128,9 +133,11 @@ export class ArtifactProvider implements IXmlCompletionProvider {
                     return [];
                 }
 
-                const centralItems: coc.CompletionItem[] = await this.centralProvider.getVersionCandidates(groupIdHint, artifactIdHint);
-                const indexItems: coc.CompletionItem[] = await this.indexProvider.getVersionCandidates(groupIdHint, artifactIdHint);
-                const localItems: coc.CompletionItem[] = await this.localProvider.getVersionCandidates(groupIdHint, artifactIdHint);
+                const [centralItems, indexItems, localItems] = await settledAll([
+                    this.centralProvider.getVersionCandidates(groupIdHint, artifactIdHint, token),
+                    this.indexProvider.getVersionCandidates(groupIdHint, artifactIdHint),
+                    this.localProvider.getVersionCandidates(groupIdHint, artifactIdHint)
+                ]);
                 const mergedItems: coc.CompletionItem[] = _.unionBy(centralItems, indexItems, localItems, (item) => item.insertText);
                 setTextEdits(mergedItems, targetRange);
                 return mergedItems;

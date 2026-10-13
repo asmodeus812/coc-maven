@@ -5,5 +5,5 @@ import { Node } from "domhandler";
 import * as coc from "coc.nvim";
 
 export interface IXmlCompletionProvider {
-    provide(document: coc.TextDocument, position: coc.Position, currentNode: Node): Promise<coc.CompletionItem[]>;
+    provide(document: coc.TextDocument, position: coc.Position, currentNode: Node, token?: coc.CancellationToken): Promise<coc.CompletionItem[]>;
 }

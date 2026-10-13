@@ -10,6 +10,7 @@ import { IXmlCompletionProvider } from "./providers/IXmlCompletionProvider";
 import { PropertiesProvider } from "./providers/PropertiesProvider";
 import { SchemaProvider } from "./providers/SchemaProvider";
 import { SnippetProvider } from "./providers/SnippetProvider";
+import { settledAll } from "./utils";
 
 export class PomCompletionProvider implements coc.CompletionItemProvider {
     private readonly genericProviders: IXmlCompletionProvider[];
@@ -23,9 +24,12 @@ export class PomCompletionProvider implements coc.CompletionItemProvider {
     async provideCompletionItems(
         document: coc.TextDocument,
         position: coc.Position,
-        _token: coc.CancellationToken,
+        token: coc.CancellationToken,
         _context: coc.CompletionContext
     ): Promise<coc.CompletionItem[] | coc.CompletionList | undefined> {
+        if (token.isCancellationRequested) {
+            return undefined;
+        }
         const documentText: string = document.getText();
         const cursorOffset: number = document.offsetAt(position);
         const currentNode: Node | undefined = getCurrentNode(documentText, cursorOffset);
@@ -33,14 +37,17 @@ export class PomCompletionProvider implements coc.CompletionItemProvider {
             return undefined;
         }
 
-        const result: coc.CompletionItem[] = [];
-        for (const provider of this.genericProviders) {
-            result.push(...(await provider.provide(document, position, currentNode as Node)));
-        }
+        const providers: IXmlCompletionProvider[] = [...this.genericProviders];
         if (!isXmlExtensionEnabled()) {
-            result.push(...(await this.schemaProvider.provide(document, position, currentNode as Node)));
+            providers.push(this.schemaProvider);
         }
-        return result;
+        const results: coc.CompletionItem[][] = await settledAll(
+            providers.map((provider) => provider.provide(document, position, currentNode as Node, token))
+        );
+        if (token.isCancellationRequested) {
+            return undefined;
+        }
+        return results.flat();
     }
 }
 

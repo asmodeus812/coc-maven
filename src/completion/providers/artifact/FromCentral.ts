@@ -8,9 +8,9 @@ import { IArtifactCompletionProvider } from "./IArtifactProvider";
 import { getSortText } from "../../utils";
 
 export class FromCentral implements IArtifactCompletionProvider {
-    public async getGroupIdCandidates(groupIdHint: string, artifactIdHint: string): Promise<coc.CompletionItem[]> {
+    public async getGroupIdCandidates(groupIdHint: string, artifactIdHint: string, token?: coc.CancellationToken): Promise<coc.CompletionItem[]> {
         const keywords: string[] = [...groupIdHint.split("."), ...artifactIdHint.split("-")];
-        const docs: IArtifactMetadata[] = await getArtifacts(keywords);
+        const docs: IArtifactMetadata[] = await getArtifacts(keywords, token);
         const groupIds: string[] = Array.from(new Set(docs.map((doc) => doc.g)).values());
         const commandOnSelection: coc.Command = {
             title: "selected",
@@ -29,9 +29,9 @@ export class FromCentral implements IArtifactCompletionProvider {
         });
     }
 
-    public async getArtifactIdCandidates(groupIdHint: string, artifactIdHint: string): Promise<coc.CompletionItem[]> {
+    public async getArtifactIdCandidates(groupIdHint: string, artifactIdHint: string, token?: coc.CancellationToken): Promise<coc.CompletionItem[]> {
         const keywords: string[] = [...groupIdHint.split("."), ...artifactIdHint.split("-")];
-        const docs: IArtifactMetadata[] = await getArtifacts(keywords);
+        const docs: IArtifactMetadata[] = await getArtifacts(keywords, token);
         const commandOnSelection: coc.Command = {
             title: "selected",
             command: COMMAND_COMPLETION_ITEM_SELECTED,
@@ -51,12 +51,12 @@ export class FromCentral implements IArtifactCompletionProvider {
         });
     }
 
-    public async getVersionCandidates(groupId: string, artifactId: string): Promise<coc.CompletionItem[]> {
+    public async getVersionCandidates(groupId: string, artifactId: string, token?: coc.CancellationToken): Promise<coc.CompletionItem[]> {
         if (!groupId && !artifactId) {
             return [];
         }
 
-        const docs: IVersionMetadata[] = await getVersions(groupId, artifactId);
+        const docs: IVersionMetadata[] = await getVersions(groupId, artifactId, token);
         const commandOnSelection: coc.Command = {
             title: "selected",
             command: COMMAND_COMPLETION_ITEM_SELECTED,
