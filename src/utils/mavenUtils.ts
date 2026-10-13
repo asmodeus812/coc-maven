@@ -168,8 +168,10 @@ export async function executeInTerminal(options: {
         const project = MavenProjectManager.get(pomFile);
         const selectedIds = project?.profiles?.filter((p) => p.selected === true)?.map((p) => p.id) ?? [];
         const unselectedIds = project?.profiles?.filter((p) => p.selected === false)?.map((p) => `-${p.id}`) ?? [];
-        if (selectedIds.length + unselectedIds.length > 0) {
-            profileOptions = "-P=" + selectedIds.concat(unselectedIds).join(",");
+        const profileList: string = selectedIds.concat(unselectedIds).join(",");
+        if (profileList) {
+            // quote the list, some shells (e.g. PowerShell) would otherwise split the list on the commas
+            profileOptions = `-P="${profileList}"`;
         }
     }
     const fullCommand: string = [
