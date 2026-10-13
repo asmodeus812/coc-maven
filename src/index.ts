@@ -164,7 +164,7 @@ export async function doActivate(context: coc.ExtensionContext): Promise<void> {
     );
     registerCommand(
         context,
-        "maven.exploerer.dependency.action", // note: keeping the spelling you requested
+        "maven.exploerer.dependency.action",
         async (project: MavenProject) => {
             type CommandItem = coc.QuickPickItem & { command: string };
             const actions = [
