@@ -59,7 +59,7 @@ export class ArtifactProvider implements IXmlCompletionProvider {
                     localItems,
                     (item: coc.CompletionItem) => item.insertText
                 );
-                mergedItems.forEach((item) => (item.textEdit = { range: targetRange } as coc.TextEdit));
+                setTextEdits(mergedItems, targetRange);
                 return mergedItems;
             }
             case XmlTagName.ArtifactId: {
@@ -104,7 +104,7 @@ export class ArtifactProvider implements IXmlCompletionProvider {
                         }
                     }
                 }
-                mergedItems.forEach((item) => (item.textEdit = { range: targetRange } as coc.TextEdit));
+                setTextEdits(mergedItems, targetRange);
                 return mergedItems;
             }
             case XmlTagName.Version: {
@@ -132,12 +132,17 @@ export class ArtifactProvider implements IXmlCompletionProvider {
                 const indexItems: coc.CompletionItem[] = await this.indexProvider.getVersionCandidates(groupIdHint, artifactIdHint);
                 const localItems: coc.CompletionItem[] = await this.localProvider.getVersionCandidates(groupIdHint, artifactIdHint);
                 const mergedItems: coc.CompletionItem[] = _.unionBy(centralItems, indexItems, localItems, (item) => item.insertText);
-                mergedItems.forEach((item) => (item.textEdit = { range: targetRange } as coc.TextEdit));
+                setTextEdits(mergedItems, targetRange);
                 return mergedItems;
             }
         }
         return [];
     }
+}
+
+// coc applies the text edit of the confirmed item, it must carry the text to insert, not only the range to replace
+function setTextEdits(items: coc.CompletionItem[], range: coc.Range): void {
+    items.forEach((item) => (item.textEdit = coc.TextEdit.replace(range, item.insertText ?? item.label)));
 }
 
 function getRange(node: Node | null, document: coc.TextDocument, fallbackPosition?: coc.Position) {
