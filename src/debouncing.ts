@@ -1,12 +1,33 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT license.
 
-import { LRUCache } from "lru-cache";
 import * as coc from "coc.nvim";
 
-export const lruCache: LRUCache<string, MovingAverage> = new LRUCache<string, MovingAverage>({
-    max: 32
-});
+export class LruCache<K, V extends object> {
+    private readonly values = new Map<K, V>();
+
+    constructor(private readonly maxSize: number) {}
+
+    public get(key: K): V | undefined {
+        const value: V | undefined = this.values.get(key);
+        if (value) {
+            this.values.delete(key);
+            this.values.set(key, value);
+        }
+        return value;
+    }
+
+    public set(key: K, value: V): void {
+        this.values.delete(key);
+        this.values.set(key, value);
+        if (this.values.size > this.maxSize) {
+            const [oldest] = this.values.keys();
+            this.values.delete(oldest);
+        }
+    }
+}
+
+export const lruCache: LruCache<string, MovingAverage> = new LruCache<string, MovingAverage>(32);
 
 // See: https://github.com/microsoft/vscode/blob/94c9ea46838a9a619aeafb7e8afd1170c967bb55/src/vs/base/common/numbers.ts
 export class MovingAverage {

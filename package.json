@@ -28,7 +28,6 @@
         "get-port": "^7.1.0",
         "htmlparser2": "^10.0.0",
         "jszip": "^3.10.1",
-        "lru-cache": "^11.2.2",
         "md5": "^2.3.0",
         "semver": "^7.7.3",
         "typescript": "^5.3.3",
