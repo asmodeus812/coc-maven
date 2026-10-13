@@ -103,7 +103,7 @@ export class MavenProject implements ITreeItem {
             // multi-module project
             const project: any = this._ePom.projects.project.find((elem: any) => this.name === _.get(elem, "artifactId[0]"));
             if (project) {
-                deps = _.get(project, "build[0].plugins[0].plugin");
+                deps = _.get(project, "dependencies[0].dependency");
             }
         } else {
             // single-project
@@ -214,12 +214,16 @@ export class MavenProject implements ITreeItem {
         }
     }
 
+    public get hasEffectivePom(): boolean {
+        return this._ePom !== undefined;
+    }
+
     public getDependencyVersion(gid: string, aid: string): string | undefined {
         // from effective POM
         const deps: Dependency[] | undefined = this.dependencies;
-        const targetDep: any = deps?.find((elem) => elem.groupId === gid && elem.artifactId === aid);
-        if (targetDep?.version?.[0] !== undefined) {
-            return targetDep.version[0];
+        const targetDep: Dependency | undefined = deps?.find((elem) => elem.groupId === gid && elem.artifactId === aid);
+        if (targetDep?.version) {
+            return targetDep.version;
         }
         // from dependency plugin
         const targetNode = this.dependencyNodes?.find((n) => n.groupId === gid && n.artifactId === aid);

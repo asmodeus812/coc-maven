@@ -55,6 +55,11 @@ export class HoverProvider implements coc.HoverProvider {
                     if (!mavenProject) {
                         return undefined;
                     }
+                    if (!mavenProject.hasEffectivePom) {
+                        // the effective versions come from the effective pom, use the cached one if there is any, do
+                        // not compute it here, that would run maven on every hover
+                        await mavenProject.getEffectivePom({ cacheOnly: true }).catch(() => undefined);
+                    }
                     const effectiveVersion: string | undefined = mavenProject.getDependencyVersion(groupIdHint, artifactIdHint);
                     if (effectiveVersion) {
                         return {
