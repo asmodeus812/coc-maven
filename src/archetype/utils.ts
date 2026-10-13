@@ -38,7 +38,11 @@ export async function importProjectOnDemand(projectFolder: string) {
         return;
     }
 
-    if (!coc.workspace.workspaceFolders?.some((wf) => projectFolder.startsWith(coc.Uri.parse(wf.uri).fsPath))) {
+    const isInsideWorkspaceFolder: boolean | undefined = coc.workspace.workspaceFolders?.some((wf) => {
+        const relative: string = path.relative(coc.Uri.parse(wf.uri).fsPath, projectFolder);
+        return !relative.startsWith("..") && !path.isAbsolute(relative);
+    });
+    if (!isInsideWorkspaceFolder) {
         return;
     }
 
