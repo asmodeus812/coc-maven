@@ -196,7 +196,7 @@ export class MavenProject implements ITreeItem {
             this._ePom = result?.ePom;
             return result;
         } catch (error) {
-            throw new Error(`Failed to calculate Effective POM - ${(error as Error).message})`);
+            throw new Error(`Failed to calculate Effective POM - ${(error as Error).message}`);
         }
     }
 
