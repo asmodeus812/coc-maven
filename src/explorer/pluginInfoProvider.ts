@@ -143,7 +143,7 @@ class PluginInfoProvider {
         // find goals
         if (version && prefix !== undefined) {
             const goalRegExp = new RegExp(`^${prefix}:(.*)`, "gm");
-            const goalsMatch: string[] | null = RegExp(goalRegExp).exec(textOutput);
+            const goalsMatch: string[] | null = textOutput.match(goalRegExp);
             if (goalsMatch !== null) {
                 // prefix:goal matched, remove "prefix:" part
                 for (const fullGoal of goalsMatch) {
