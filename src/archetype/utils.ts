@@ -16,7 +16,7 @@ export async function promptOnDidProjectCreated(projectName: string, projectFold
 }
 
 async function specifyOpenMethod(hasOpenFolder: boolean, projectLocation: string): Promise<string> {
-    let openMethod = coc.workspace.getConfiguration("maven").get<string>("defaultOpenProjectMethod", OPEN_IN_NEW_WORKSPACE);
+    let openMethod = coc.workspace.getConfiguration("maven").get<string>("projectOpenBehavior", "Interactive");
     if (openMethod !== CANCEL_OPEN_WORKSPACE && openMethod !== OPEN_IN_NEW_WORKSPACE) {
         let candidates: string[] = [OPEN_IN_NEW_WORKSPACE, hasOpenFolder ? CANCEL_OPEN_WORKSPACE : undefined].filter(
             (c) => c !== undefined
