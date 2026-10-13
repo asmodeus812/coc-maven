@@ -284,8 +284,7 @@ async function updateParentPom(parentPomPath: string, subModuleName: string): Pr
     nextInsertOffset++;
 
     const packagingNodes = getChildrenByTags(projectNodes[0], [XmlTagName.Packaging]);
-    const edit: coc.WorkspaceEdit = { changes: {} };
-    edit.changes ??= {};
+    const textEdits: coc.TextEdit[] = [];
     // Update the packaging mode to pom.
     if (packagingNodes.length) {
         const node = packagingNodes[0].firstChild;
@@ -299,7 +298,7 @@ async function updateParentPom(parentPomPath: string, subModuleName: string): Pr
                 ),
                 "<packaging>pom</packaging>"
             );
-            edit[parentPomUri.toString()] = [textEdit].concat(edit[parentPomUri.toString()] || []);
+            textEdits.unshift(textEdit);
         }
         nextInsertOffset = packagingNodes[0].endIndex ? packagingNodes[0].endIndex + 1 : nextInsertOffset;
     } else {
@@ -307,7 +306,7 @@ async function updateParentPom(parentPomPath: string, subModuleName: string): Pr
             pomDocument.positionAt(nextInsertOffset),
             `\n${genIndent(indentInfo.indentChar, indentInfo.indent)}<packaging>pom</packaging>`
         );
-        edit[parentPomUri.toString()] = [textEdit].concat(edit[parentPomUri.toString()] || []);
+        textEdits.unshift(textEdit);
     }
 
     // Add new module as a child module of parent pom.
@@ -321,7 +320,7 @@ async function updateParentPom(parentPomPath: string, subModuleName: string): Pr
                 pomDocument.positionAt(nextInsertOffset),
                 `\n${genIndent(indentInfo.indentChar, indentInfo.indent * 2)}<module>${subModuleName}</module>`
             );
-            edit[parentPomUri.toString()] = [textEdit].concat(edit[parentPomUri.toString()] || []);
+            textEdits.unshift(textEdit);
         } else {
             const textEdit: coc.TextEdit = coc.TextEdit.replace(
                 coc.Range.create(
@@ -332,7 +331,7 @@ async function updateParentPom(parentPomPath: string, subModuleName: string): Pr
                     `${genIndent(indentInfo.indentChar, indentInfo.indent * 2)}<module>${subModuleName}</module>\n` +
                     `${genIndent(indentInfo.indentChar, indentInfo.indent)}</modules>`
             );
-            edit[parentPomUri.toString()] = [textEdit].concat(edit[parentPomUri.toString()] || []);
+            textEdits.unshift(textEdit);
         }
     } else {
         const textEdit: coc.TextEdit = coc.TextEdit.insert(
@@ -341,10 +340,10 @@ async function updateParentPom(parentPomPath: string, subModuleName: string): Pr
                 `${genIndent(indentInfo.indentChar, indentInfo.indent * 2)}<module>${subModuleName}</module>\n` +
                 `${genIndent(indentInfo.indentChar, indentInfo.indent)}</modules>`
         );
-        edit[parentPomUri.toString()] = [textEdit].concat(edit[parentPomUri.toString()] || []);
+        textEdits.unshift(textEdit);
     }
 
-    await coc.workspace.applyEdit(edit);
+    await coc.workspace.applyEdit({ changes: { [parentPomUri.toString()]: textEdits } });
 }
 
 function genIndent(indentChar: string, indentSize: number): string {
