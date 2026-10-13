@@ -213,7 +213,17 @@ export async function getMaven(
     const mvnPathFromSettings: string | undefined = Settings.Executable.path(pomPath);
     if (mvnPathFromSettings) {
         // expand tilde to deal with ~/path-to-mvn
-        return expandHome(mvnPathFromSettings);
+        const expandedPath: string = expandHome(mvnPathFromSettings);
+        const safetyResult: ExecutablePathSafety = await checkExecutablePathSafety(expandedPath);
+        if (safetyResult === "safe") {
+            return expandedPath;
+        } else if (safetyResult === "abort") {
+            return undefined;
+        }
+        // "use-default": the user explicitly chose to use the default maven, skip the wrapper as well, since it could
+        // also be planted in the project, and fall through to the system maven
+        mavenOutputChannel.appendLine(`Configured Maven path "${expandedPath}" was declined. Falling back to system Maven.`);
+        return defaultMavenExecutable(executableOptions);
     }
 
     const preferMavenWrapper: boolean = Settings.Executable.preferMavenWrapper(pomPath);
@@ -225,6 +235,53 @@ export async function getMaven(
     }
 
     return defaultMavenExecutable(executableOptions);
+}
+
+type ExecutablePathSafety = "safe" | "use-default" | "abort";
+
+// Set of canonical executable paths the user has explicitly confirmed as safe during this session
+const confirmedExecutablePaths: Set<string> = new Set();
+
+/**
+ * Validates whether a configured Maven executable path is safe to use. Relative paths and paths that resolve inside a
+ * workspace folder are suspicious, they could be binaries planted in a project, e.g. through a project local coc-settings
+ * file, the user is asked for confirmation and the decision is remembered for the session.
+ */
+async function checkExecutablePathSafety(executablePath: string): Promise<ExecutablePathSafety> {
+    const canonicalPath: string = path.isAbsolute(executablePath) ? await canonicalizePath(executablePath) : executablePath;
+    const insideWorkspace: boolean = path.isAbsolute(canonicalPath) && coc.workspace.getWorkspaceFolder(coc.Uri.file(canonicalPath).toString()) !== undefined;
+    let result: ExecutablePathSafety = "safe";
+    if (!confirmedExecutablePaths.has(canonicalPath) && (!path.isAbsolute(executablePath) || insideWorkspace)) {
+        result = await promptForExecutableConfirmation(executablePath);
+        if (result === "safe") {
+            confirmedExecutablePaths.add(canonicalPath);
+        }
+    }
+    return result;
+}
+
+async function canonicalizePath(filePath: string): Promise<string> {
+    try {
+        return await fse.realpath(filePath);
+    } catch {
+        return filePath;
+    }
+}
+
+async function promptForExecutableConfirmation(executablePath: string): Promise<ExecutablePathSafety> {
+    const USE_IT = "Allow";
+    const USE_DEFAULT = "Use Default Maven";
+    const choice: string | undefined = await coc.window.showWarningMessage(
+        `The configured Maven executable path "${executablePath}" points to a location inside the workspace or is a relative path. Using it could be a security risk. Do you want to proceed?`,
+        USE_IT,
+        USE_DEFAULT
+    );
+    if (choice === USE_IT) {
+        return "safe";
+    } else if (choice === USE_DEFAULT) {
+        return "use-default";
+    }
+    return "abort";
 }
 
 export function getEmbeddedMavenWrapper(): string {
