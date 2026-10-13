@@ -187,7 +187,7 @@ export class MavenProject implements ITreeItem {
     }
 
     public async refreshEffectivePom(): Promise<void> {
-        await this.ePomProvider.calculateEffectivePom();
+        await this.getEffectivePom();
     }
 
     public async getEffectivePom(options?: { cacheOnly?: boolean }): Promise<IEffectivePom> {
