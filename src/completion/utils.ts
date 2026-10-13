@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 import * as _ from "lodash";
+import * as coc from "coc.nvim";
 
 const VERSION_VALUE_MAX = 999;
 const VERSION_VALUE_DIGITS = 3;
@@ -29,3 +30,13 @@ export function trimBrackets(snippetContent: string, fileContent: string, offset
     return ret;
 }
 
+export async function settledAll(promises: Promise<coc.CompletionItem[]>[]): Promise<coc.CompletionItem[][]> {
+    const results = await Promise.allSettled(promises);
+    return results.map((r) => {
+        if (r.status === "fulfilled") {
+            return r.value;
+        }
+        console.error(r.reason);
+        return [];
+    });
+}
