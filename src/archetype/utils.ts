@@ -38,12 +38,7 @@ export async function importProjectOnDemand(projectFolder: string) {
         return;
     }
 
-    let projectInCurrentWorkspace = false;
-    if (coc.workspace.workspaceFolders?.find((wf) => projectFolder.startsWith(wf.uri))) {
-        projectInCurrentWorkspace = true;
-    }
-
-    if (!projectInCurrentWorkspace) {
+    if (!coc.workspace.workspaceFolders?.some((wf) => projectFolder.startsWith(wf.uri))) {
         return;
     }
 
