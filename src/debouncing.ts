@@ -4,7 +4,7 @@
 import { LRUCache } from "lru-cache";
 import * as coc from "coc.nvim";
 
-export const lruCache: LRUCache<coc.Uri, MovingAverage> = new LRUCache<coc.Uri, MovingAverage>({
+export const lruCache: LRUCache<string, MovingAverage> = new LRUCache<string, MovingAverage>({
     max: 32
 });
 
@@ -25,7 +25,7 @@ export class MovingAverage {
 }
 
 export function getRequestDelay(uri: coc.Uri): number {
-    const avg: MovingAverage | undefined = lruCache.get(uri);
+    const avg: MovingAverage | undefined = lruCache.get(uri.toString());
     if (!avg) {
         return 350;
     }
