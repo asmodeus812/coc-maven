@@ -281,6 +281,70 @@
             {
                 "command": "maven.project.configuration.update",
                 "title": "Update Java Project Configuration"
+            },
+            {
+                "command": "maven.goal.execute",
+                "title": "Run Maven Commands for a project"
+            },
+            {
+                "command": "maven.goal.custom",
+                "title": "Run Custom Maven Goal"
+            },
+            {
+                "command": "maven.goal.clean",
+                "title": "Run Maven Phase 'clean'"
+            },
+            {
+                "command": "maven.goal.validate",
+                "title": "Run Maven Phase 'validate'"
+            },
+            {
+                "command": "maven.goal.compile",
+                "title": "Run Maven Phase 'compile'"
+            },
+            {
+                "command": "maven.goal.test",
+                "title": "Run Maven Phase 'test'"
+            },
+            {
+                "command": "maven.goal.test-compile",
+                "title": "Run Maven Phase 'test-compile'"
+            },
+            {
+                "command": "maven.goal.package",
+                "title": "Run Maven Phase 'package'"
+            },
+            {
+                "command": "maven.goal.verify",
+                "title": "Run Maven Phase 'verify'"
+            },
+            {
+                "command": "maven.goal.install",
+                "title": "Run Maven Phase 'install'"
+            },
+            {
+                "command": "maven.goal.site",
+                "title": "Run Maven Phase 'site'"
+            },
+            {
+                "command": "maven.goal.deploy",
+                "title": "Run Maven Phase 'deploy'"
+            },
+            {
+                "command": "maven.favorites",
+                "title": "Run Favorite Maven Command"
+            },
+            {
+                "command": "maven.project.addFavorite",
+                "title": "Add Favorite Maven Command"
+            },
+            {
+                "command": "maven.project.openPom",
+                "title": "Open Project pom file"
+            },
+            {
+                "command": "maven.new.module",
+                "title": "Create New Maven Module"
             }
         ]
     }

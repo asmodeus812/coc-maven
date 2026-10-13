@@ -12,6 +12,7 @@ import * as xml2js from "xml2js";
 import { DEFAULT_MAVEN_LIFECYCLES } from "../completion/constants";
 import { MavenProfile } from "../explorer/model/MavenProfile";
 import { MavenProject } from "../explorer/model/MavenProject";
+import { MavenProjectManager } from "../project/MavenProjectManager";
 import { getExtensionVersion, getPathToTempFolder, getPathToWorkspaceStorage } from "./contextUtils";
 import { MavenNotFoundError, UserError } from "./errorUtils";
 import { getLRUCommands, ICommandHistoryEntry } from "./historyUtils";
@@ -164,7 +165,11 @@ export class Utils {
         return await window.withProgress({ title: "Obtaining plugin subscriptions..." }, task);
     }
 
-    public static async executeCustomGoal(pomOrProject: string | MavenProject | undefined): Promise<void> {
+    public static async executeCustomGoal(
+        pomOrProject: string | MavenProject | undefined,
+        goal?: string,
+        env?: { [key: string]: string }
+    ): Promise<void> {
         let pomPath: string | undefined;
         if (typeof pomOrProject === "string") {
             pomPath = pomOrProject;
@@ -175,12 +180,14 @@ export class Utils {
         if (!pomPath) {
             return;
         }
-        const inputGoals: string | undefined = await window.requestInput("Enter custom goal: ", "", {
-            placeholder: "e.g. clean package -DskipTests"
-        });
+        const inputGoals: string | undefined =
+            goal ||
+            (await window.requestInput("Enter custom goal: ", "", {
+                placeholder: "e.g. clean package -DskipTests"
+            }));
         const trimmedGoals: string | undefined = inputGoals ? inputGoals.trim() : undefined;
         if (trimmedGoals) {
-            await executeInTerminal({ command: trimmedGoals, pomFile: pomPath });
+            await executeInTerminal({ command: trimmedGoals, pomFile: pomPath, env });
         }
     }
 
@@ -208,10 +215,15 @@ export class Utils {
         }
     }
 
-    public static async executeMavenCommand(): Promise<void> {
+    public static async executeMavenCommand(node?: MavenProject | string): Promise<void> {
         let selectedProject: MavenProject | undefined;
         let selectedCommand: string | undefined;
-        selectedProject = await selectProjectIfNecessary();
+        if (node instanceof MavenProject) {
+            selectedProject = node;
+        } else if (typeof node === "string") {
+            selectedProject = MavenProjectManager.get(node);
+        }
+        selectedProject ??= await selectProjectIfNecessary();
 
         if (!selectedProject) {
             return;
