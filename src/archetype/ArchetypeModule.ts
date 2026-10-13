@@ -6,12 +6,14 @@ import * as coc from "coc.nvim";
 import { Uri, workspace } from "coc.nvim";
 import * as fse from "fs-extra";
 import * as path from "path";
+import { Settings } from "../Settings";
 import { getPathToExtensionRoot } from "../utils/contextUtils";
 import { UserError } from "../utils/errorUtils";
 import { XmlTagName, detectDocumentIndent, getChildrenByTags, getTextFromNode, parseDocument } from "../utils/lexerUtils";
 import { executeInBackground, getEmbeddedMavenWrapper, getMaven } from "../utils/mavenUtils";
 import { Utils } from "../utils/Utils";
 import { Archetype } from "./Archetype";
+import { buildArchetypeGenerateArgs } from "./archetypeCommand";
 import {
     runSteps,
     selectArchetypeStep,
@@ -132,27 +134,31 @@ export class ArchetypeModule {
 
 async function executeInTerminalHandler(metadata: IProjectCreationMetadata): Promise<void> {
     const { archetypeArtifactId, archetypeGroupId, archetypeVersion, groupId, artifactId, targetFolder } = metadata;
-    if (archetypeArtifactId === undefined || archetypeGroupId === undefined || archetypeVersion === undefined) {
-        throw new Error("Archetype information is incomplete.");
+    if (
+        archetypeArtifactId === undefined ||
+        archetypeGroupId === undefined ||
+        archetypeVersion === undefined ||
+        groupId === undefined ||
+        artifactId === undefined ||
+        targetFolder === undefined
+    ) {
+        throw new Error("Project creation information is incomplete.");
     }
     const task = async (p: coc.Progress<{ message?: string; increment?: number }>) => {
         const cmdArgs: string[] = [
             "-B",
-            // explicitly using 3.1.2 as maven-archetype-plugin:3.0.1 ignores -DoutputDirectory
-            // see https://github.com/microsoft/vscode-maven/issues/478
-            "org.apache.maven.plugins:maven-archetype-plugin:3.1.2:generate",
-            `-DarchetypeArtifactId="${archetypeArtifactId}"`,
-            `-DarchetypeGroupId="${archetypeGroupId}"`,
-            `-DarchetypeVersion="${archetypeVersion}"`,
-            `-DgroupId="${groupId}"`,
-            `-DartifactId="${artifactId}"`,
+            ...buildArchetypeGenerateArgs({
+                archetypeArtifactId,
+                archetypeGroupId,
+                archetypeVersion,
+                groupId,
+                artifactId,
+                outputDirectory: targetFolder
+            }),
             "-Dversion=1.0.0",
             "-DinteractiveMode=false"
         ];
-        let mvnPath: string | undefined = await getMaven();
-        cmdArgs.push(`-DoutputDirectory="${targetFolder}"`);
-        mvnPath ??= getEmbeddedMavenWrapper();
-
+        const mvnPath: string | undefined = (await getMaven()) ?? getEmbeddedMavenWrapper();
         if (mvnPath === undefined) {
             p.report({ message: "Failed locating maven binary" });
             return false;
@@ -160,7 +166,9 @@ async function executeInTerminalHandler(metadata: IProjectCreationMetadata): Pro
         p.report({ message: "Generating project structure..." });
         try {
             return await executeInBackground({
-                command: cmdArgs.join(" "),
+                args: cmdArgs,
+                cwd: targetFolder,
+                env: Settings.getEnvironment(targetFolder),
                 mvnExecutable: mvnPath
             });
         } catch (error) {
@@ -170,7 +178,7 @@ async function executeInTerminalHandler(metadata: IProjectCreationMetadata): Pro
     };
 
     await coc.window.withProgress({ title: "Creating maven project..." }, task);
-    await promptOnDidProjectCreated(archetypeArtifactId, targetFolder as string);
+    await promptOnDidProjectCreated(archetypeArtifactId, targetFolder);
 }
 
 async function createBasicMavenProject(metadata: IProjectCreationMetadata): Promise<void> {
