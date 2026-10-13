@@ -102,12 +102,6 @@
                     "description": "Additional command-line options to pass to every Maven invocation (e.g., -T 1C, -Dmaven.test.skip=true).",
                     "scope": "machine-overridable"
                 },
-                "maven.terminal.useJavaHome": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "Run Maven using the JAVA_HOME configured in VS Code instead of the system default.",
-                    "scope": "window"
-                },
                 "maven.terminal.customEnv": {
                     "type": "array",
                     "items": {

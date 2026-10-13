@@ -104,32 +104,14 @@ environment variable, in settings:
 }
 ```
 
-### Special Handling for JAVA_HOME
+### JAVA_HOME for Maven
 
-If you have Red Hat's Java Language Support extension installed, then you can
-specify JAVA_HOME in settings for that extension:
+The `maven.terminal.useJavaHome` setting (reusing `java.home`) has been removed,
+same as upstream. Use `maven.terminal.customEnv` to point Maven at a specific
+JDK. The variables are exported before every command sent to the Maven
+terminal, so values set by shell startup files do not override them.
 
-```json
-{
-    "java.home": "C:\\Program Files\\Java\\jdk-9.0.4" // Red Hat Java Language Support Setting
-}
-```
 
-This extension (Maven for Java) can reuse that setting if you desire:
-
-```json
-{
-    "maven.terminal.useJavaHome": true // Use the Red Hat Java Language Support Setting for JAVA_HOME
-}
-```
-
-With this support, you can specify JAVA_HOME in one place and you do not need to
-use the `maven.terminal.customEnv` setting unless you have other environment
-variables to set.
-
-If you have JAVA_HOME configured through the `maven.terminal.customEnv` setting,
-and also specify to reuse the Red Hat setting, then the value from
-`maven.terminal.customEnv` will take precedence.
 
 ### Default Options for Maven Command
 

@@ -5,6 +5,7 @@ import * as coc from "coc.nvim";
 import { Uri, workspace } from "coc.nvim";
 import { FavoriteCommand } from "./explorer/model/FavoriteCommand";
 import { MavenProject } from "./explorer/model/MavenProject";
+import { mavenOutputChannel } from "./mavenOutputChannel";
 
 type FavoriteFormat = { alias?: string; command: string; debug?: boolean };
 type EnvironmentSetting = { environmentVariable: string; value: string };
@@ -49,10 +50,6 @@ export class Settings {
     }
 
     public static readonly External = class {
-        public static javaHome(): string | undefined {
-            return workspace.getConfiguration("java").get<string>("home");
-        }
-
         public static defaultWindowsShell(): string | undefined {
             return workspace.getConfiguration("terminal").get<string>("integrated.shell.windows");
         }
@@ -63,10 +60,6 @@ export class Settings {
     };
 
     public static readonly Terminal = class {
-        public static useJavaHome(): boolean {
-            return !!_getMavenSection<boolean>("terminal.useJavaHome");
-        }
-
         public static customEnv(resourceOrFilepath?: Uri | string): EnvironmentSetting[] | undefined {
             return _getMavenSection("terminal.customEnv", resourceOrFilepath);
         }
@@ -112,11 +105,14 @@ export class Settings {
     };
 
     public static getEnvironment(resourceOrFilepath?: Uri | string): { [key: string]: string } {
-        const customEnv: { [key: string]: string } = _getJavaHomeEnvIfAvailable();
+        const customEnv: { [key: string]: string } = {};
         const environmentSettings: EnvironmentSetting[] | undefined = Settings.Terminal.customEnv(resourceOrFilepath);
         if (environmentSettings) {
             environmentSettings.forEach((s: EnvironmentSetting) => {
                 customEnv[s.environmentVariable] = s.value;
+                if (s.environmentVariable === "JAVA_HOME") {
+                    mavenOutputChannel.appendLine(`Using JAVA_HOME=${s.value} (source: maven.terminal.customEnv)`);
+                }
             });
         }
         return customEnv;
@@ -148,16 +144,4 @@ function _getMavenSection<T>(section: string, resourceOrFilepath?: Uri | string)
         resource = resourceOrFilepath;
     }
     return workspace.getConfiguration("maven", resource).get<T>(section);
-}
-
-function _getJavaHomeEnvIfAvailable(): { [key: string]: string } {
-    // Look for the java.home setting from the redhat.java extension.  We can reuse it
-    // if it exists to avoid making the user configure it in two places.
-    const useJavaHome: boolean = Settings.Terminal.useJavaHome();
-    const javaHome: string | undefined = Settings.External.javaHome();
-    if (useJavaHome && javaHome) {
-        return { JAVA_HOME: javaHome };
-    } else {
-        return {};
-    }
 }
