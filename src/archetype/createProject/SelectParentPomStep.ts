@@ -39,20 +39,19 @@ export class SelectParentPom implements IProjectCreationStep {
                 });
             });
 
-        do {
-            const selectedItem = await window.showQuickPick<ParentPomPickItem>(items, {
-                title: metadata.title,
-                placeholder: "Select the parent...",
-                matchOnDescription: true
-            });
+        const selectedItem = await window.showQuickPick<ParentPomPickItem>(items, {
+            title: metadata.title,
+            placeholder: "Select the parent...",
+            matchOnDescription: true
+        });
 
-            if (selectedItem === undefined) {
-                return StepResult.STOP;
-            }
+        if (selectedItem === undefined) {
+            return StepResult.STOP;
+        }
 
-            metadata.groupId = metadata.parentProject?.groupId;
-            metadata.parentProject = selectedItem.parentProject;
-        } while (metadata.parentProject === undefined);
+        // <None> is a valid choice, the module is then created as a standalone project
+        metadata.parentProject = selectedItem.parentProject;
+        metadata.groupId = metadata.parentProject?.groupId ?? metadata.groupId;
         return StepResult.NEXT;
     }
 }
