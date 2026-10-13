@@ -7,6 +7,7 @@ import { FavoriteCommand } from "./explorer/model/FavoriteCommand";
 import { MavenProject } from "./explorer/model/MavenProject";
 
 type FavoriteFormat = { alias?: string; command: string; debug?: boolean };
+type EnvironmentSetting = { environmentVariable: string; value: string };
 export class Settings {
     public static excludedFolders(resource: Uri): string[] {
         const ret: string[] | undefined = _getMavenSection<string[]>("excludedFolders", resource);
@@ -66,12 +67,7 @@ export class Settings {
             return !!_getMavenSection<boolean>("terminal.useJavaHome");
         }
 
-        public static customEnv(resourceOrFilepath?: Uri | string):
-            | {
-                  environmentVariable: string;
-                  value: string;
-              }[]
-            | undefined {
+        public static customEnv(resourceOrFilepath?: Uri | string): EnvironmentSetting[] | undefined {
             return _getMavenSection("terminal.customEnv", resourceOrFilepath);
         }
 
@@ -117,10 +113,6 @@ export class Settings {
 
     public static getEnvironment(resourceOrFilepath?: Uri | string): { [key: string]: string } {
         const customEnv: { [key: string]: string } = _getJavaHomeEnvIfAvailable();
-        type EnvironmentSetting = {
-            environmentVariable: string;
-            value: string;
-        };
         const environmentSettings: EnvironmentSetting[] | undefined = Settings.Terminal.customEnv(resourceOrFilepath);
         if (environmentSettings) {
             environmentSettings.forEach((s: EnvironmentSetting) => {
