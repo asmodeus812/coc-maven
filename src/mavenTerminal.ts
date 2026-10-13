@@ -42,15 +42,27 @@ class MavenTerminal implements coc.Disposable {
                 setupEnvForWSL(this.terminals[name], env);
             }
         }
-        this.terminals[name].show();
+        const terminal: coc.Terminal = this.terminals[name];
         const nvim = coc.workspace.nvim;
-        await nvim.command("wincmd J");
-        await nvim.command("resize 15");
-        if (cwd) {
-            this.terminals[name].sendText(await getCDCommand(cwd), true);
+        // coc moves the cursor of the terminal window to the bottom (normal! G) when it shows the terminal or sends text
+        // to it, which fails while that window is in terminal mode, step out of the terminal window first and only focus
+        // it again once everything has been sent
+        if (((await nvim.call("bufnr", ["%"])) as number) === terminal.bufnr) {
+            await nvim.command("wincmd p");
         }
-        this.terminals[name].sendText(getCommand(command), addNewLine);
-        return this.terminals[name];
+        await terminal.show(true);
+        const winid = (await nvim.call("bufwinid", [terminal.bufnr])) as number;
+        if (winid !== -1) {
+            await nvim.call("win_execute", [winid, "wincmd J | resize 15"]);
+        }
+        if (cwd) {
+            terminal.sendText(await getCDCommand(cwd), true);
+        }
+        terminal.sendText(getCommand(command), addNewLine);
+        if (winid !== -1) {
+            await nvim.call("win_gotoid", [winid]);
+        }
+        return terminal;
     }
 
     // To Refactor: remove from here.
