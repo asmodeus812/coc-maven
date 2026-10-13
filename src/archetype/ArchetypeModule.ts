@@ -348,11 +348,7 @@ async function updateParentPom(parentPomPath: string, subModuleName: string): Pr
 }
 
 function genIndent(indentChar: string, indentSize: number): string {
-    let ret = "";
-    for (let i = 0; i < indentSize; i++) {
-        ret += indentChar;
-    }
-    return ret;
+    return indentChar.repeat(indentSize);
 }
 
 export class ArchetypeMetadata {
