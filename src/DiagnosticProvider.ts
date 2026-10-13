@@ -38,9 +38,9 @@ class DiagnosticProvider {
             const startTime: number = performance.now();
             await this.refreshDiagnostics(uri);
             const executionTime: number = performance.now() - startTime;
-            const movingAverage: MovingAverage = lruCache.get(uri) || new MovingAverage();
+            const movingAverage: MovingAverage = lruCache.get(uri.toString()) || new MovingAverage();
             movingAverage.update(executionTime);
-            lruCache.set(uri, movingAverage);
+            lruCache.set(uri.toString(), movingAverage);
         }, timeout);
     }
 
