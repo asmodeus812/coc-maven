@@ -31,13 +31,7 @@ export async function focusResourceLocation(location: coc.Uri | string, destWind
     const stringUri: string = typeof location === "string" ? location : location.toString();
     const textEditor: coc.TextEditor | undefined = coc.window.activeTextEditor;
     if (textEditor?.document.uri !== stringUri) {
-        let visibleEditor: coc.TextEditor | undefined = undefined;
-        for (const editor of coc.window.visibleTextEditors) {
-            if (stringUri === editor?.document.uri) {
-                visibleEditor = editor;
-                break;
-            }
-        }
+        const visibleEditor = coc.window.visibleTextEditors.find((editor) => editor.document.uri === stringUri);
         if (visibleEditor?.winid) {
             await coc.workspace.nvim.call("win_gotoid", [visibleEditor.winid]);
             return;
