@@ -69,10 +69,7 @@ export class MavenProjectManager {
     }
 
     public static remove(pomPath: string): void {
-        const projectMap = MavenProjectManager.getInstance()._projectMap;
-        if (projectMap.has(pomPath)) {
-            projectMap.delete(pomPath);
-        }
+        MavenProjectManager.getInstance()._projectMap.delete(pomPath);
     }
 
     public static async removeAllFrom(folder: coc.WorkspaceFolder): Promise<void> {
@@ -87,11 +84,7 @@ async function getAllPomPaths(workspaceFolder?: coc.WorkspaceFolder): Promise<st
     if (!workspaceFolder) {
         if (coc.workspace.workspaceFolders) {
             const arrayOfPoms: string[][] = await Promise.all(coc.workspace.workspaceFolders.map(getAllPomPaths));
-            const result: string[] = [];
-            for (const poms of arrayOfPoms) {
-                result.push(...poms);
-            }
-            return result;
+            return arrayOfPoms.flat();
         } else {
             return [];
         }
