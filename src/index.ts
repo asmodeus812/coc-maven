@@ -14,6 +14,7 @@ import { COMMAND_COMPLETION_ITEM_SELECTED, DEFAULT_MAVEN_LIFECYCLES } from "./co
 import { contentProvider } from "./contentProvider";
 import { definitionProvider } from "./definition/definitionProvider";
 import { MavenExplorerProvider } from "./explorer/MavenExplorerProvider";
+import { Dependency } from "./explorer/model/Dependency";
 import { LifecyclePhase } from "./explorer/model/LifecyclePhase";
 import { MavenProfile } from "./explorer/model/MavenProfile";
 import { MavenProject } from "./explorer/model/MavenProject";
@@ -21,6 +22,7 @@ import { PluginGoal } from "./explorer/model/PluginGoal";
 import { pluginInfoProvider } from "./explorer/pluginInfoProvider";
 import { addDependencyHandler } from "./handlers/dependency/addDependencyHandler";
 import { excludeDependencyHandler } from "./handlers/dependency/excludeDependencyHandler";
+import { goToEffectiveHandler } from "./handlers/dependency/goToEffectiveHandler";
 import { jumpToDefinitionHandler } from "./handlers/dependency/jumpToDefinitionHandler";
 import { setDependencyVersionHandler, setDependencyVersionHandlerGeneric } from "./handlers/dependency/setDependencyVersionHandler";
 import { showDependenciesHandler } from "./handlers/dependency/showDependenciesHandler";
@@ -168,6 +170,15 @@ export async function doActivate(context: coc.ExtensionContext): Promise<void> {
         async (project: MavenProject) => {
             type CommandItem = coc.QuickPickItem & { command: string };
             const actions = [
+                ...(project instanceof Dependency && project.omittedStatus?.status === "conflict"
+                    ? [
+                          {
+                              label: "Goto effective",
+                              description: `Reveal the effective version ${project.omittedStatus.effectiveVersion} in the explorer`,
+                              command: "maven.explorer.dependency.goToEffective"
+                          }
+                      ]
+                    : []),
                 {
                     label: "Goto definition",
                     description: "Focus dependency in project",
@@ -203,6 +214,7 @@ export async function doActivate(context: coc.ExtensionContext): Promise<void> {
     registerCommand(context, "maven.explorer.excludeDependency", excludeDependencyHandler, true);
     registerCommand(context, "maven.explorer.goToDefinition", jumpToDefinitionHandler, true);
     registerCommand(context, "maven.explorer.goToEffective", Utils.showEffectivePom, true);
+    registerCommand(context, "maven.explorer.dependency.goToEffective", (node?: Dependency) => goToEffectiveHandler(mavenExplorerView, node), true);
     // completion items carry this command for telemetry upstream, there is nothing to report here
     registerCommand(context, COMMAND_COMPLETION_ITEM_SELECTED, () => undefined, true);
     registerCommand(context, "maven.explorer.favorites", runFavoriteCommandsHandler, true);
