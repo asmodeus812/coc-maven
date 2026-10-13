@@ -39,8 +39,8 @@ class MavenContentProvider implements coc.TextDocumentContentProvider {
             case "effective-pom": {
                 const project: MavenProject | undefined = MavenProjectManager.get(pomPath);
                 if (project) {
-                    const effectivePom: IEffectivePom = await project.getEffectivePom();
-                    return effectivePom.ePomString;
+                    const effectivePom: IEffectivePom | undefined = await project.getEffectivePom();
+                    return effectivePom?.ePomString;
                 } else {
                     return Utils.getEffectivePom(pomPath);
                 }
