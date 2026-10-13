@@ -26,7 +26,9 @@ import { goToEffectiveHandler } from "./handlers/dependency/goToEffectiveHandler
 import { jumpToDefinitionHandler } from "./handlers/dependency/jumpToDefinitionHandler";
 import { setDependencyVersionHandler, setDependencyVersionHandlerGeneric } from "./handlers/dependency/setDependencyVersionHandler";
 import { showDependenciesHandler } from "./handlers/dependency/showDependenciesHandler";
+import { addFavoriteHandler } from "./handlers/favorites/addFavoriteHandler";
 import { runFavoriteCommandsHandler } from "./handlers/favorites/runFavoriteCommandsHandler";
+import { executeLifecyclePhaseHandler } from "./handlers/lifecycle/executeLifecyclePhaseHandler";
 import { hoverProvider } from "./hover/hoverProvider";
 import { registerArtifactSearcher } from "./jdtls/artifactSearcher";
 import { isJavaExtEnabled } from "./jdtls/commands";
@@ -134,8 +136,19 @@ export async function doActivate(context: coc.ExtensionContext): Promise<void> {
         true
     );
 
-    registerCommand(context, "maven.goal.custom", async () => {
-        return await Utils.executeCustomGoal(await selectProjectIfNecessary());
+    registerCommand(context, "maven.goal.custom", async (node?: string | MavenProject, goal?: string, env?: { [key: string]: string }) => {
+        return await Utils.executeCustomGoal(await resolveProject(node), goal, env);
+    });
+    registerCommand(context, "maven.goal.execute", async (node?: string | MavenProject) => await Utils.executeMavenCommand(node));
+    registerCommand(context, "maven.favorites", async (node?: string | MavenProject) => await runFavoriteCommandsHandler(await resolveProject(node)));
+    registerCommand(context, "maven.lifecycle.execute", executeLifecyclePhaseHandler);
+    DEFAULT_MAVEN_LIFECYCLES.forEach((goal: string) => {
+        registerCommand(context, `maven.goal.${goal}`, async (node?: string | MavenProject) => {
+            const project: MavenProject | undefined = await resolveProject(node);
+            if (project) {
+                await executeInTerminal({ command: goal, pomFile: project.pomPath });
+            }
+        });
     });
     registerCommand(
         context,
@@ -217,6 +230,14 @@ export async function doActivate(context: coc.ExtensionContext): Promise<void> {
     registerCommand(context, "maven.explorer.dependency.goToEffective", (node?: Dependency) => goToEffectiveHandler(mavenExplorerView, node), true);
     // completion items carry this command for telemetry upstream, there is nothing to report here
     registerCommand(context, COMMAND_COMPLETION_ITEM_SELECTED, () => undefined, true);
+    registerCommand(context, "maven.new.module", ArchetypeModule.createMavenModule);
+    registerCommand(context, "maven.project.addFavorite", addFavoriteHandler);
+    registerCommand(context, "maven.project.openPom", async (node?: string | MavenProject) => {
+        const project: MavenProject | undefined = await resolveProject(node);
+        if (project) {
+            await focusResourceLocation(coc.Uri.file(project.pomPath).toString(), alternateWindowId);
+        }
+    });
     registerCommand(context, "maven.explorer.favorites", runFavoriteCommandsHandler, true);
 
     // Free resources when a terminal is manually closed
@@ -331,6 +352,25 @@ function registerPomFileAuthoringHelpers(context: coc.ExtensionContext): void {
     context.subscriptions.push(
         coc.languages.registerCodeActionProvider(pomSelector, conflictResolver, undefined, ConflictResolver.providedCodeActionKinds)
     );
+}
+
+/**
+ * Resolve the project a command should operate on, either the one provided by the caller, as a project or a path to its
+ * pom file, or one selected by the user when there are multiple projects in the workspace.
+ */
+async function resolveProject(node?: string | MavenProject): Promise<MavenProject | undefined> {
+    let project: MavenProject | undefined;
+    if (node instanceof MavenProject) {
+        project = node;
+    } else if (typeof node === "string" && node.length > 0) {
+        project = MavenProjectManager.get(node);
+        if (!project) {
+            coc.window.showErrorMessage(`No maven project found for pom file ${node}`);
+        }
+    } else {
+        project = await selectProjectIfNecessary();
+    }
+    return project;
 }
 
 async function mavenHistoryHandler(item: MavenProject | undefined): Promise<void> {
