@@ -21,6 +21,7 @@ enum ShellType {
     POWERSHELL = "PowerShell",
     GIT_BASH = "Git Bash",
     WSL = "WSL Bash",
+    FISH = "Fish",
     OTHERS = "Others"
 }
 
@@ -30,17 +31,12 @@ class MavenTerminal implements coc.Disposable {
     public async runInTerminal(command: string, options: ITerminalOptions): Promise<coc.Terminal> {
         const defaultOptions: ITerminalOptions = { addNewLine: true, name: "Maven" };
         const { addNewLine, name, cwd, workspaceFolder } = Object.assign(defaultOptions, options);
+        // Open terminal in workspaceFolder if provided
+        // See: https://github.com/microsoft/vscode-maven/issues/467#issuecomment-584544090
+        const terminalCwd: string | undefined = workspaceFolder ? coc.Uri.parse(workspaceFolder.uri).fsPath : undefined;
+        const env: { [envKey: string]: string } = { ...Settings.getEnvironment(terminalCwd), ...options.env };
         if (this.terminals[name] === undefined) {
-            // Open terminal in workspaceFolder if provided
-            // See: https://github.com/microsoft/vscode-maven/issues/467#issuecomment-584544090
-            const terminalCwd: string | undefined = workspaceFolder ? coc.Uri.parse(workspaceFolder.uri).fsPath : undefined;
-            const env: { [envKey: string]: string } = { ...Settings.getEnvironment(terminalCwd), ...options.env };
             this.terminals[name] = await coc.window.createTerminal({ name, env, cwd: terminalCwd });
-            // Workaround for WSL custom envs.
-            // See: https://github.com/Microsoft/vscode/issues/71267
-            if (currentWindowsShell() === ShellType.WSL) {
-                setupEnvForWSL(this.terminals[name], env);
-            }
         }
         const terminal: coc.Terminal = this.terminals[name];
         const nvim = coc.workspace.nvim;
@@ -55,6 +51,10 @@ class MavenTerminal implements coc.Disposable {
         if (winid !== -1) {
             await nvim.call("win_execute", [winid, "wincmd J | resize 15"]);
         }
+        // Shell startup files (e.g. .zshrc/.zprofile) can re-export the same variables and silently override the env passed
+        // to createTerminal, terminals are also reused across invocations and the env is only applied once at creation,
+        // therefore (re-)export the variables explicitly before every command
+        setupEnvForShell(terminal, env);
         if (cwd) {
             terminal.sendText(await getCDCommand(cwd), true);
         }
@@ -151,7 +151,7 @@ async function getCDCommand(cwd: string): Promise<string> {
 // Ref:
 // https://github.com/microsoft/vscode/blob/1755a21efc89bcb5ccef3fd908372bf7c8944d3c/src/vs/platform/terminal/node/windowsShellHelper.ts#L144-L164
 function currentWindowsShell(): ShellType {
-    const currentWindowsShellPath: string = process.env["SHELL"] as string;
+    const currentWindowsShellPath: string = process.env["SHELL"] ?? "";
     const executable: string = path.basename(currentWindowsShellPath);
     switch (executable.toLowerCase()) {
         case "cmd.exe":
@@ -171,6 +171,8 @@ function currentWindowsShell(): ShellType {
         case "opensuse-42.exe":
         case "sles-12.exe":
             return ShellType.WSL;
+        case "fish":
+            return ShellType.FISH;
         default:
             return ShellType.OTHERS;
     }
@@ -206,10 +208,52 @@ export async function toWinPath(filepath: string): Promise<string> {
 
 export const mavenTerminal: MavenTerminal = new MavenTerminal();
 
-function setupEnvForWSL(terminal: coc.Terminal, env: { [envKey: string]: string }): void {
-    if (terminal !== undefined) {
-        Object.keys(env).forEach((key) => {
-            terminal.sendText(`export ${key}="${env[key]}"`, true);
-        });
-    }
+// Only well-formed identifiers can be exported safely across every shell we support, anything else can't be made safe by
+// escaping (e.g. it could inject a second statement).
+const ENV_VAR_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+function escapeForPosixShell(value: string): string {
+    // Single quotes are literal in POSIX shells except for the quote character itself, so this is safe against $(),
+    // backticks, "$VAR", and other expansions.
+    return `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
+function escapeForPowerShell(value: string): string {
+    // PowerShell single-quoted strings are literal; only the quote itself needs doubling.
+    return `'${value.replace(/'/g, "''")}'`;
+}
+
+function escapeForFishShell(value: string): string {
+    // Fish single-quoted strings only treat backslash and the quote itself as special, and both are escaped with a
+    // backslash (not doubled, unlike POSIX sh/PowerShell).
+    return `'${value.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
+}
+
+function setupEnvForShell(terminal: coc.Terminal, env: { [envKey: string]: string }): void {
+    const shellType: ShellType = currentWindowsShell();
+    Object.keys(env).forEach((key) => {
+        if (!ENV_VAR_NAME_PATTERN.test(key)) {
+            mavenOutputChannel.appendLine(`Skipping environment variable with unsupported name: ${key}`);
+            return;
+        }
+        const value: string = env[key];
+        switch (shellType) {
+            case ShellType.POWERSHELL:
+                terminal.sendText(`$env:${key}=${escapeForPowerShell(value)}`, true);
+                break;
+            case ShellType.CMD:
+                // cmd.exe has no real quoting mechanism; wrapping the whole assignment in quotes protects spaces and
+                // operators (&, |, <, >, ^), but %VAR% references inside the value are still expanded by cmd itself.
+                terminal.sendText(`set "${key}=${value}"`, true);
+                break;
+            case ShellType.FISH:
+                // fish doesn't support bash-style `export KEY=value`; it errors on the `=`.
+                terminal.sendText(`set -x ${key} ${escapeForFishShell(value)}`, true);
+                break;
+            default:
+                // bash/zsh/Git Bash/WSL and anything else that understands POSIX export syntax.
+                terminal.sendText(`export ${key}=${escapeForPosixShell(value)}`, true);
+                break;
+        }
+    });
 }
