@@ -52,7 +52,12 @@ export class MavenProjectManager {
         return projects?.length > 0 ? projects[0] : undefined;
     }
 
-    public static get(pomPath: string): MavenProject | undefined {
+    /**
+     * Find a project by the path of its pom file, document uris (file://...) are accepted as well, since language feature
+     * providers receive those from coc, while the projects are keyed by their file system path
+     */
+    public static get(pomPathOrUri: string): MavenProject | undefined {
+        const pomPath: string = pomPathOrUri.startsWith("file:") ? coc.Uri.parse(pomPathOrUri).fsPath : pomPathOrUri;
         return MavenProjectManager.getInstance()._projectMap.get(pomPath);
     }
 
