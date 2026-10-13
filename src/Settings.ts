@@ -11,6 +11,10 @@ type FavoriteFormat = { alias?: string; command: string; debug?: boolean };
 type EnvironmentSetting = { environmentVariable: string; value: string };
 let loggedJavaHome: string | undefined;
 export class Settings {
+    public static isGAVCompletionEnabled(): boolean {
+        return !!_getMavenSection<boolean>("completion.gavEnabled");
+    }
+
     public static excludedFolders(resource: Uri): string[] {
         const ret: string[] | undefined = _getMavenSection<string[]>("excludedFolders", resource);
         return ret ?? [];
