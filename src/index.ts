@@ -272,11 +272,7 @@ function registerPomFileWatcher(context: coc.ExtensionContext): void {
 function registerConfigChangeListener(context: coc.ExtensionContext): void {
     const configChangeListener: coc.Disposable = coc.workspace.onDidChangeConfiguration(async (e: coc.ConfigurationChangeEvent) => {
         // close all terminals with outdated JAVA related environment variables
-        if (
-            e.affectsConfiguration("maven.terminal.useJavaHome") ||
-            e.affectsConfiguration("maven.terminal.customEnv") ||
-            (e.affectsConfiguration("java.home") && Settings.Terminal.useJavaHome())
-        ) {
+        if (e.affectsConfiguration("maven.terminal.customEnv")) {
             mavenTerminal.dispose();
         }
         if (
