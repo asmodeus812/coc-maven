@@ -3,6 +3,8 @@
 
 import * as path from "path";
 import * as coc from "coc.nvim";
+import * as fse from "fs-extra";
+import { getExtensionVersion } from "../utils/contextUtils";
 import { registerCommand } from "../utils/uiUtils";
 import { executeJavaLanguageServerCommand, getJavaExtension, isJavaExtActivated } from "./commands";
 
@@ -16,7 +18,7 @@ const TITLE_RESOLVE_UNKNOWN_TYPE = "Add dependency for this type";
 export function registerArtifactSearcher(context: coc.ExtensionContext): void {
     const javaExt: coc.Extension<any> | undefined = getJavaExtension();
     if (javaExt) {
-        const resolver: TypeResolver = new TypeResolver(path.join(context.extensionPath, "resources", "IndexData"));
+        const resolver: TypeResolver = new TypeResolver(path.join(context.extensionPath, "resources", "IndexData"), context.storagePath);
 
         registerCommand(context, COMMAND_SEARCH_ARTIFACT, async (param: any) => await resolver.pickAndAddDependency(param), true);
 
@@ -52,18 +54,33 @@ export function registerArtifactSearcher(context: coc.ExtensionContext): void {
 }
 
 class TypeResolver {
-    private readonly dataPath: string;
     private initialized = false;
 
-    constructor(dataPath: string) {
-        this.dataPath = dataPath;
-    }
+    constructor(
+        private readonly bundledDataPath: string,
+        private readonly storagePath: string
+    ) {}
 
     public async initialize(): Promise<void> {
         if (!this.initialized) {
-            await executeJavaLanguageServerCommand("java.maven.initializeSearcher", this.dataPath);
+            await executeJavaLanguageServerCommand("java.maven.initializeSearcher", await this.prepareDataPath());
             this.initialized = true;
         }
+    }
+
+    /**
+     * The searcher opens the lucene index for writing, which would modify the files shipped with the extension, work on a
+     * copy in the extension storage instead, one per extension version so that an updated index is picked up
+     */
+    private async prepareDataPath(): Promise<string> {
+        const dataPath: string = path.join(this.storagePath, `IndexData-${getExtensionVersion()}`);
+        if (!(await fse.pathExists(dataPath))) {
+            const staging: string = `${dataPath}.${process.pid}.tmp`;
+            await fse.remove(staging);
+            await fse.copy(this.bundledDataPath, staging);
+            await fse.move(staging, dataPath, { overwrite: true });
+        }
+        return dataPath;
     }
 
     public getArtifactsHover(document: coc.TextDocument, position: coc.Position): coc.Hover | undefined {
