@@ -88,17 +88,6 @@ class TypeResolver {
             return undefined;
         }
 
-        if (!this.initialized) {
-            this.initialize()
-                .then(() => {
-                    this.getArtifactsHover(document, position);
-                })
-                .catch(() => {
-                    coc.window.showErrorMessage("Unable to initialize artifact searcher");
-                });
-            return undefined;
-        }
-
         const diagnostics: coc.Diagnostic[] = coc.diagnosticManager
             .getDiagnosticsInRange({ uri: document.uri } as coc.TextDocumentIdentifier, coc.Range.create(position, position))
             .filter((diagnostic: coc.Diagnostic) => {
@@ -143,17 +132,6 @@ class TypeResolver {
             return undefined;
         }
 
-        if (!this.initialized) {
-            this.initialize()
-                .then(() => {
-                    this.getArtifactsCodeActions(document, context, _selectRange);
-                })
-                .catch(() => {
-                    coc.window.showErrorMessage("Unable to initialize artifact searcher");
-                });
-            return undefined;
-        }
-
         const diagnostics: coc.Diagnostic[] = context.diagnostics.filter((diagnostic) => {
             return diagnosticIndicatesUnresolvedType(diagnostic, document);
         });
@@ -193,8 +171,10 @@ class TypeResolver {
             return;
         }
 
-        if (!this.initialized) {
-            this.initialize().catch();
+        try {
+            await this.initialize();
+        } catch (error) {
+            coc.window.showErrorMessage(`Unable to initialize artifact searcher ${(error as Error).message}`);
             return;
         }
 
