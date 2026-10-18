@@ -1,195 +1,251 @@
-# Maven for Java
+# coc-maven
 
-This is a fork of the vs code extension for maven adapted to work with the
-coc.nvim ecosystem.
+Maven support for [coc.nvim](https://github.com/neoclide/coc.nvim): a project
+explorer, commands that run goals, lifecycle phases and favorite command lines,
+completion, hover, go-to-definition, code actions and conflict diagnostics for
+`pom.xml`, dependency commands, project and module creation from archetypes,
+and a search for the artifact behind an unresolved Java type.
 
-## Features
+This README covers installation, setup and configuration. Every command and
+feature is described in the help page, available once the extension is
+active, without `:helptags`:
 
-Maven extension for Coc.nvim. It provides a project explorer and shortcuts to
-execute Maven commands, improving user experience for Java developers who use
-Maven.
-
-- Support to generate projects from Maven Archetype.
-- Support to generate effective POM.
-- Provide shortcuts to common goals, plugin goals and customized commands.
-- Preserve command history to fast re-run.
+```vim
+:help coc-maven
+```
 
 ## Requirements
 
-- Java
-- Maven / Maven Wrapper
+- Neovim or Vim with [coc.nvim](https://github.com/neoclide/coc.nvim) 0.0.82
+  or later.
+- Maven: `mvn` in `$PATH`, a Maven wrapper (`mvnw`, `mvnw.cmd`) in the
+  project, or an executable that `maven.executable.path` points to.
+- A JDK that Maven can find through `JAVA_HOME`.
+- Optional: `coc-java` (or `coc-java-dev`). It provides the artifact index
+  for completion and the artifact searcher, and reloads and imports the Java
+  projects.
+- Optional: `coc-xml`. When it is active, the extension leaves out its own
+  schema completion and schema hover for `pom.xml`.
+- Network access to `search.maven.org` and `repo1.maven.org` for the artifact
+  and version search, and to `repo.maven.apache.org` to update the archetype
+  catalog.
 
-## Basic Usage
+## Installation
 
-### Maven Explorer
+Install the extension from its repository:
 
-The extension scans `pom.xml` in your workspace, and displays all Maven projects
-and their modules in the sidebar.
+```vim
+:CocInstall https://github.com/asmodeus812/coc-maven
+```
 
-### Run Plugin Goals
+The extension starts when you open a Java file or a workspace that contains a
+`pom.xml` in its root or one folder below.
 
-The extension parse effective-pom of Maven projects, and displays all plugins
-and plugin goals hierarchically.
+## Setup
 
-### POM File Editing
+### The filetype of pom.xml
 
-The extension provides Maven specific completion suggestions when editing POM
-files, including snippets and artifact hints.
-
-### Re-Run Historical Commands
-
-It preserves history of goals for each project, so you can fast re-run previous
-long commands, e.g.
-`mvn <goals> -Dparam1=value1 -Dparam2=value2 -Dparam3=value3 ...` There are 2
-entries for it:
-
-- Command Palette -> select `Maven: History ...` -> Select a project -> Select
-  command from the history
-- Right-click on a project -> Click `History ...` -> Select command from the
-  history
-
-### Archetype Related
-
-### Generate from Maven Archetype
-
-The extension loads archetypes listed in local/remote catalog. After selection,
-the extension sends `mvn archetype:generate -D...` to terminal. There are 2
-entries for it:
-
-- Command Palette -> select `Maven: Generate from Maven Archetype`
-- Right-click on a folder -> Click `Generate from Maven Archetype`
-
-### Update Maven Archetype Catalog
-
-With following steps, you can update the **local cache** of Maven **remote
-catalog**. It takes some time to download meta data from Maven central
-repository.
-
-Command Palette -> select `Maven: Update Maven Archetype Catalog`.
-
-## Additional Configurations
-
-### Coc.nvim configuration
-
-Ensure that your local configuration is setup to associate the pom.xml files
-with xml language id, that would ensure that the extension is correctly enabled
-on pom files which are a subset of xml
+The pom features need the filetype `xml` for `pom.xml`. If your Vim setup
+gives it another filetype, map it:
 
 ```lua
 vim.g.coc_filetype_map = {
-    ['pom.xml']      = 'xml',
+    ['pom.xml'] = 'xml',
 }
 ```
 
-### JAVA_HOME and Other Environment Variables
+### Java and Maven
 
-This extension executes Maven by opening a terminal session and then calling
-Maven in that session. Maven requires the JAVA_HOME environment variable to be
-set. Maven will also look for other variables such as MAVEN_OPTS. If you prefer
-not to set those variables permanently you can configure them, or any other
-environment variable, in settings:
+Maven needs `JAVA_HOME`. Set it in the environment that starts Neovim, or give
+it to the extension with `maven.terminal.customEnv`:
 
 ```json
 {
     "maven.terminal.customEnv": [
         {
-            "environmentVariable": "MAVEN_OPTS", // variable name
-            "value": "-Xms1024m -Xmx4096m" // value
+            "environmentVariable": "JAVA_HOME",
+            "value": "/usr/lib/jvm/java-21-openjdk"
         },
         {
-            "environmentVariable": "JAVA_HOME", // variable name
-            "value": "C:\\Program Files\\Java\\jdk-9.0.4" // value
+            "environmentVariable": "MAVEN_OPTS",
+            "value": "-Xms1024m -Xmx4096m"
         }
     ]
 }
 ```
 
-### JAVA_HOME for Maven
+On Windows, escape backslashes in the value:
+`"C:\\Program Files\\Java\\jdk-21"`.
 
-The `maven.terminal.useJavaHome` setting (reusing `java.home`) has been removed,
-same as upstream. Use `maven.terminal.customEnv` to point Maven at a specific
-JDK. The variables are exported before every command sent to the Maven
-terminal, so values set by shell startup files do not override them.
+To use a specific Maven, set `maven.executable.path`. A Maven `settings.xml`
+outside `~/.m2/settings.xml` goes into `maven.settingsFile`. The extension
+reads `<localRepository>` from the settings file to find the local repository,
+which defaults to `~/.m2/repository`.
 
-### GAV completions
+### The Java language server
 
-Completions for `groupId`, `artifactId` and `version` in pom files query Maven
-Central. Set `"maven.completion.gavEnabled": false` to disable them.
+Install `coc-java` for the artifact index and the artifact searcher. The
+artifact index only works when the language server runs in standard mode.
 
-### Default Options for Maven Command
+## Configuration
 
-The usage of Maven executable is:
+Set these keys in `coc-settings.json` (`:CocConfig` opens it).
 
-> usage: mvn [options] [<goal(s)>] [<phase(s)>]
+### Maven executable
 
-You can use `maven.executable.options` to specify default **options** for all
-your Maven commands executed in current project.
+| Key | Type | Default | Effect |
+|---|---|---|---|
+| `maven.executable.path` | string | `""` | Path of the Maven executable, for example `/usr/local/bin/mvn`. A leading `~` is expanded. |
+| `maven.executable.preferMavenWrapper` | boolean | `true` | Use the Maven wrapper of the project when it has one. |
+| `maven.executable.options` | string or array of string | `""` | Options added to every Maven command, for example `-o -s ./settings.xml`. |
+| `maven.settingsFile` | string or null | `null` | The Maven `settings.xml`, passed with `-s` and read for `<localRepository>`. A change reloads the local repository location. |
+
+The extension takes the first Maven it finds: `maven.executable.path` when it
+is not empty; the wrapper, when `maven.executable.preferMavenWrapper` is on,
+`mvnw` (`mvnw.cmd` on Windows) in the folder of the pom or the nearest parent
+folder up to the workspace folder; `mvn` from `$PATH`. When it finds none, it
+asks for the path and writes the answer to `maven.executable.path` in your
+user `coc-settings.json`. A relative path, or one inside a workspace folder,
+needs a confirmation once per session (`:help coc-maven-executable`).
+
+`maven.executable.options` takes a string, with quotes around arguments that
+contain spaces, or an array. These two are equal:
 
 ```json
 {
-    "maven.executable.options": "-o -s ./settings.xml" // work offline and use an alternative settings file. Can also be defined as an array of strings, e.g. ["-o", "-s ./settings.xml"]
+    "maven.executable.options": "-o -DskipTests"
 }
 ```
-
-### Folder Exclusion for Searching POM Files
-
-To speed up the searching of Maven projects, you can exclude folders in
-settings:
 
 ```json
 {
-    "maven.excludedFolders": [
-        "**/.*", // exclude hidden folders
-        "**/node_modules", // exclude node modules to speed up
-        "**/target" // exclude duplicated pom file in target folder
-    ]
+    "maven.executable.options": ["-o", "-DskipTests"]
 }
 ```
 
-### Customize Favorite Maven Commands
+### Terminal
 
-Specify a favorite command in settings:
+| Key | Type | Default | Effect |
+|---|---|---|---|
+| `maven.terminal.customEnv` | array of objects | `[]` | Environment variables for Maven, in the terminal and in background runs. A change closes the Maven terminals. |
+| `maven.terminal.favorites` | array of objects | two entries, below | Favorite Maven command lines, listed in the explorer and by the favorites command. |
+
+Each `customEnv` object has a non-empty string `environmentVariable` and a
+string `value`. A name that is not made of letters, digits and underscores, or
+that starts with a digit, is skipped and logged in the output channel `maven`.
+The terminal sets the variables in the syntax of the shell in `$SHELL`:
+PowerShell, `cmd.exe`, `fish` and POSIX shells, including WSL, where paths are
+converted with `wslpath`.
+
+Each favorite has the string `command` (goals and options, without `mvn`),
+the optional string `alias`, the label in the lists, and the optional boolean
+`debug`, which adds `-X` (Maven debug output) to the command line. The default
+favorites:
 
 ```json
 {
     "maven.terminal.favorites": [
         {
-            "alias": "full-build without tests",
+            "alias": "Install without tests",
+            "command": "install -DskipTests"
+        },
+        {
+            "alias": "Build without tests",
             "command": "clean package -DskipTests"
         }
     ]
 }
 ```
 
-Now right-click on an project item, and then click `Favorite ...`. The option
-`full-build without tests` should show up.
+### Explorer and project discovery
 
-## Settings
+| Key | Type | Default | Effect |
+|---|---|---|---|
+| `maven.view` | `"flat"` or `"hierarchical"` | `"hierarchical"` | Lists all projects on one level, or nests modules below the project that declares them. |
+| `maven.explorer.projectName` | string | `"${project.name}"` | The label of a project in the explorer. |
+| `maven.excludedFolders` | array of string | `["**/.*", "**/node_modules", "**/target", "**/bin", "**/archetype-resources"]` | Glob patterns of folders that the search for poms skips. |
+| `maven.pomfile.globPattern` | string | `"**/pom.xml"` | The glob that finds the poms of the workspace and that the file watcher observes. |
+| `maven.pomfile.autoUpdateEffectivePOM` | boolean | `true` | Recompute the effective pom of a project in the background after its `pom.xml` changes on disk. |
+| `maven.pomfile.prefetchEffectivePom` | boolean | `true` | Compute the effective pom of every project in the background when the projects are loaded, so hover and the explorer have it ready. Can be turned off per project. |
 
-| Name                                         | Description                                                                                                                                                                                                                                                             | Default Value                                                                     |
-| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| `maven.dependency.enableConflictDiagnostics` | Specify whether to show diagnostics for conflict dependencies.                                                                                                                                                                                                          | `true`                                                                            |
-| `maven.excludedFolders`                      | Specifies file path pattern of folders to exclude while searching for Maven projects.                                                                                                                                                                                   | `[ "**/.*", "**/node_modules", "**/target", "**/bin", "**/archetype-resources" ]` |
-| `maven.executable.preferMavenWrapper`        | Specifies whether you prefer to use Maven wrapper. If true, it tries using 'mvnw' by walking up the parent folders. If false, or 'mvnw' is not found, it tries 'mvn' in PATH instead.                                                                                   | `true`                                                                            |
-| `maven.executable.path`                      | Specifies absolute path of your 'mvn' executable. When this value is empty, it tries using 'mvn' or 'mvnw' according to the value of 'maven.executable.preferMavenWrapper'. E.g. `/usr/local/apache-maven-3.6.0/bin/mvn`                                                | ` `                                                                               |
-| `maven.executable.options`                   | Specifies default options for all mvn commands. E.g. `-o -DskipTests`                                                                                                                                                                                                   | ` `                                                                               |
-| `maven.explorer.projectName`                 | Format of project node name shown in Maven explorer.                                                                                                                                                                                                                    | `${project.name}`                                                                 |
-| `maven.projectOpenBehavior`                  | "Default method of opening newly created project.                                                                                                                                                                                                                       | `"Interactive"`                                                                   |
-| `maven.pomfile.autoUpdateEffectivePOM`       | Specifies whether to update effective-pom automatically whenever changes detected.                                                                                                                                                                                      | `false`                                                                           |
-| `maven.pomfile.globPattern`                  | Specifies the glob pattern used to look for pom.xml files.                                                                                                                                                                                                              | `**/pom.xml`                                                                      |
-| `maven.pomfile.prefetchEffectivePom`         | Specifies whether to prefetch effective pom on startup.                                                                                                                                                                                                                 | `false`                                                                           |
-| `maven.terminal.useJavaHome`                 | If this value is true, and if the setting java.home has a value, then the environment variable JAVA_HOME will be set to the value of java.home when a new terminal window is created.                                                                                   | `false`                                                                           |
-| `maven.terminal.customEnv`                   | Specifies an array of environment variable names and values. These environment variable values will be added before Maven is executed. <br /> `environmentVariable`: Name of the environment variable to set. <br /> `value`: Value of the environment variable to set. | `[]`                                                                              |
-| `maven.terminal.favorites`                   | Specify pre-defined favorite commands to execute. <br /> `alias`: A short name for the command. <br /> `command`: Content of the favorite command.                                                                                                                      | `[]`                                                                              |
-| `maven.view`                                 | Specifies the way of viewing Maven projects. Possible values: `flat`, `hierarchical`.                                                                                                                                                                                   | `flat`                                                                            |
-| `maven.settingsFile`                         | Specifies the absolute path of Maven `settings.xml` file. If not specified, `~/.m2/settings.xml` is used.                                                                                                                                                               | `null`                                                                            |
-| `maven.showInExplorerContextMenu`            | If this value is true, add a command to create Maven Projects in the Explorer context menu for folders.                                                                                                                                                                 | `true`                                                                            |
+`maven.explorer.projectName` takes one of `${project.name}`,
+`${project.artifactId}`, `${project.artifactId}-${project.version}`,
+`${project.groupId}.${project.artifactId}` and
+`${project.groupId}.${project.artifactId}-${project.version}`. A project
+without a `<name>` shows its artifactId for `${project.name}`.
 
-## Contributing
+`maven.pomfile.globPattern` does not decide which buffers get the pom
+features: those attach to the filetype `xml` with the pattern
+`**/{pom.xml,*.pom}`.
 
-This project has adopted the
-[Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
-For more information see the
-[Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
-contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any
-additional questions or comments.
+The explorer refreshes when `maven.view`, `maven.pomfile.globPattern`,
+`maven.explorer.projectName` or `maven.terminal.favorites` changes.
+
+The commands that switch the explorer layout write to your user
+`coc-settings.json`. The command that adds a favorite writes to
+`.vim/coc-settings.json` of the workspace folder, which it creates when needed;
+that list replaces the user list for the folder.
+
+### Pom editing
+
+| Key | Type | Default | Effect |
+|---|---|---|---|
+| `maven.completion.gavEnabled` | boolean | `true` | Look up `groupId`, `artifactId` and `version` candidates on Maven Central. `false` turns off only the Central lookups; the candidates from the Java language server index and the local repository stay. |
+| `maven.dependency.enableConflictDiagnostics` | boolean | `true` | Report dependency conflicts as warnings. `false` also clears the reported ones. |
+
+### New projects
+
+| Key | Type | Default | Effect |
+|---|---|---|---|
+| `maven.projectOpenBehavior` | `"Interactive"`, `"Open"` or `"Cancel"` | `"Interactive"` | After a project or module is created: `"Open"` opens its folder, `"Cancel"` does nothing, `"Interactive"` (and any other value) asks. |
+
+## Files
+
+The extension writes:
+
+- the command history of each pom, in the temporary folder of the system;
+- cached Maven results (effective pom, profiles, dependency tree, plugin
+  descriptions), in the coc storage folder of the extension;
+- the archetype catalog, when you update it (`:help coc-maven-archetype`);
+- a copy of the artifact index for the artifact searcher, in the coc storage
+  folder of the extension.
+
+It edits your poms only through the dependency, module and project commands.
+
+## Troubleshooting
+
+- **"Maven not found in PATH"**: install Maven or a wrapper, or set
+  `maven.executable.path`; see Configuration for the lookup order.
+- **Completion, hover and definition do nothing in a pom**: check
+  `:set filetype?` in the pom buffer. It must be `xml`; see the filetype
+  setup above.
+- **No groupId or artifactId candidates**: Maven Central needs network access
+  and `maven.completion.gavEnabled` on, and the Java language server index needs
+  `coc-java` in standard mode.
+- **The explorer is empty**: no `pom.xml` was found; check
+  `maven.excludedFolders` and `maven.pomfile.globPattern`.
+- **Maven fails**: open its output with `:CocCommand workspace.showOutput maven`.
+  The channel also shows the local repository and the `JAVA_HOME` set in
+  `maven.terminal.customEnv`.
+
+## Development
+
+```sh
+npm install        # installs the dependencies and builds lib/index.js
+npm run build      # builds lib/index.js with esbuild
+npm run watch      # rebuilds on change
+make update        # rebuilds server/com.microsoft.java.maven.plugin.jar
+```
+
+`NODE_ENV=production` minifies the bundle, `NODE_ENV=development` writes a
+source map. `make update` builds the Java language server plugin from
+`microsoft/vscode-maven`; it needs `git`, a JDK and Maven.
+
+To try a checkout, add the folder to `'runtimepath'`, for example
+`set runtimepath^=/path/to/coc-maven`, after building it.
+
+## License
+
+MIT, see `LICENSE`. coc-maven is a fork of
+[vscode-maven](https://github.com/microsoft/vscode-maven) by Microsoft,
+adapted to coc.nvim.
