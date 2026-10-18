@@ -34,6 +34,7 @@ import { hoverProvider } from "./hover/hoverProvider";
 import { registerArtifactSearcher } from "./jdtls/artifactSearcher";
 import { isJavaExtEnabled } from "./jdtls/commands";
 import { mavenOutputChannel } from "./mavenOutputChannel";
+import { registerHelp } from "./help";
 import { mavenTerminal } from "./mavenTerminal";
 import { init as initMavenXsd } from "./mavenXsd";
 import { MavenProjectManager } from "./project/MavenProjectManager";
@@ -47,6 +48,7 @@ import { focusResourceLocation } from "./utils/editUtils";
 const POM_REFRESH_DELAY_MS = 1000;
 
 export async function activate(context: coc.ExtensionContext): Promise<void> {
+    registerHelp(context).catch((error) => mavenOutputChannel.appendLine(`Unable to register the help page: ${error}`));
     await loadPackageInfo(context);
     await doActivate(context);
 }

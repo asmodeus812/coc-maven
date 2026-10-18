@@ -1,0 +1,543 @@
+*coc-maven.txt*  Maven support for coc.nvim
+
+
+                        COC-MAVEN REFERENCE MANUAL
+
+
+Maven projects, goals, poms and archetypes                         *coc-maven*
+
+                                      Type |gO| to see the table of contents.
+
+==============================================================================
+INTRODUCTION                                                 *coc-maven-intro*
+
+coc-maven is a coc.nvim extension for projects built with Maven. It provides:
+
+- A project explorer, a tree view that lists the Maven projects of the
+  workspace with their lifecycle phases, plugin goals, dependencies, favorites
+  and profiles. |coc-maven-explorer|
+- Commands that run Maven goals, lifecycle phases, favorites and earlier
+  commands in a terminal. |coc-maven-run|
+- Completion, hover, go-to-definition, code actions and diagnostics for
+  `pom.xml` files. |coc-maven-pom|
+- The effective pom and the dependency tree of a project.
+  |coc-maven-documents|
+- Commands that add a dependency, change its version or exclude it.
+  |coc-maven-dependencies|
+- Project and module creation from Maven archetypes or from a built-in
+  template. |coc-maven-archetype|
+- A search for the artifact that provides an unresolved Java type.
+  |coc-maven-searcher|
+
+Installation, setup and settings are in the README of the extension.
+
+coc-maven defines no key mappings and no |<Plug>| mappings. You use it through
+|:CocCommand|, the explorer window, code actions and completion.
+
+==============================================================================
+QUICKSTART                                              *coc-maven-quickstart*
+
+Open the explorer: >vim
+    :CocCommand maven.explorer.show
+<
+Expand a project with `t`, then the "Lifecycle" node, and press `<CR>` on a
+phase such as `package`. The phase runs in a terminal at the bottom.
+
+Run a goal or a phase without the explorer: >vim
+    :CocCommand maven.goal.execute
+    :CocCommand maven.goal.package
+    :CocCommand maven.goal.custom
+<
+With several projects in the workspace these commands ask which project to
+use; with one project they use it directly.
+
+Repeat an earlier command: >vim
+    :CocCommand maven.history
+<
+Add a dependency from Maven Central, or open the effective pom: >vim
+    :CocCommand maven.project.addDependency
+    :CocCommand maven.project.effectivePom
+<
+Create a project or a module: >vim
+    :CocCommand maven.archetype.generate
+    :CocCommand maven.new.module
+<
+Use |:CocCommand| without a name, or |:CocList| commands, to pick any of the
+commands in |coc-maven-commands|.
+
+==============================================================================
+EXPLORER                                                  *coc-maven-explorer*
+
+The explorer is a coc tree view titled "MAVEN PROJECTS". Show it with
+|coc-maven-command-maven.explorer.show|. It opens as a vertical window at the
+far right, 40 columns wide. When the tree is already visible in another tab
+page, the command moves it to the current tab page.
+
+The explorer uses the keys of coc tree views, see |coc-tree-mappings|: `<CR>`
+runs the action of the node under the cursor, `<Tab>` shows the node actions
+and `t` expands or collapses a node.
+
+The explorer refreshes by itself when a `pom.xml` is created, changed or
+deleted, when a workspace folder is added or removed, and when one of its
+settings changes. Refresh it by hand with
+|coc-maven-command-maven.explorer.refresh|.
+
+------------------------------------------------------------------------------
+NODES                                               *coc-maven-explorer-nodes*
+
+The first level lists the Maven projects of the workspace folder. In a
+workspace with several folders it lists the folders first. Projects are sorted
+by name. In the hierarchical layout, modules appear below the project that
+declares them; in the flat layout every project is on the first level. Switch
+the layout with |coc-maven-command-maven.explorer.flat| and
+|coc-maven-command-maven.explorer.hierarchical|. When the workspace has no
+`pom.xml`, the tree shows "No Maven project found."
+
+Each project has these children:
+
+- Lifecycle: the phases `clean`, `validate`, `compile`, `test`,
+  `test-compile`, `package`, `verify`, `install`, `site` and `deploy`.
+- Plugins: the plugins of the effective pom, each with its goals.
+- Dependencies: the dependency tree. A dependency that Maven omits shows the
+  reason after its name, and a dependency that is not in the compile scope
+  shows its scope in parentheses. A project without dependencies shows "No
+  dependencies".
+- Favorites: the favorites, see |coc-maven-favorites|.
+- Profiles: the profiles of the project, each marked "(enabled)" or
+  "(disabled)".
+
+------------------------------------------------------------------------------
+NODE ACTIONS                                      *coc-maven-explorer-actions*
+
+`<CR>` on a node runs its action:
+
+- Project: opens the effective pom of the project.
+- Phase: runs the phase in the terminal.
+- Plugin goal: runs `{prefix}:{goal}` in the terminal.
+- Favorite: runs the favorite command in the terminal.
+- Profile: toggles the profile. The next terminal commands activate the
+  profiles you toggled on and deactivate the ones you toggled off.
+- Dependency: asks for an action with the prompt "Choose a dependency action":
+  "Goto effective" (only for a dependency omitted for a conflict), "Goto
+  definition", "Change version" and "Exclude dependency".
+
+The dependency actions:
+
+- "Goto effective" moves the cursor to the node of the version that Maven
+  kept. When there is none, it shows "Failed to find effective dependency
+  {name}.".
+- "Goto definition" opens the pom that declares the dependency at its
+  `<dependency>` element.
+- "Change version" and "Exclude dependency" edit the pom, see
+  |coc-maven-dependencies|.
+
+==============================================================================
+RUNNING MAVEN                                                  *coc-maven-run*
+
+Goals, phases, favorites and history entries run in a terminal named
+"Maven-{folder}", where {folder} is the name of the workspace folder that
+contains the pom, or "Maven" when the pom is in no workspace folder. The next
+command reuses the terminal. The terminal window opens at the bottom of the
+screen, 15 lines high, and the cursor moves into it.
+
+The terminal shows the whole Maven command line: the goals, the pom of the
+project, the profiles you toggled and your Maven options. Before each command
+coc-maven sets the environment variables of your settings, also in a terminal
+that is already open.
+
+Other work, such as computing the effective pom or the dependency tree, runs
+without a terminal. A background command that fails shows "Background process
+terminated with code {n}.".
+
+------------------------------------------------------------------------------
+FAVORITES                                                *coc-maven-favorites*
+
+Favorites are named Maven command lines. They appear under "Favorites" in the
+explorer and in the list of |coc-maven-command-maven.favorites|. A favorite
+without an alias shows its command as the label. Add one with
+|coc-maven-command-maven.project.addFavorite|.
+
+Define favorites with an alias in `maven.terminal.favorites`, see the README.
+
+------------------------------------------------------------------------------
+HISTORY                                                    *coc-maven-history*
+
+coc-maven records every command that runs in the terminal for a pom, with the
+time, in the history of that pom. |coc-maven-command-maven.history| lists
+them, the newest first, and runs the one you pick again.
+
+------------------------------------------------------------------------------
+MAVEN EXECUTABLE                                        *coc-maven-executable*
+
+When coc-maven finds no Maven, it shows "Maven not found in PATH. Please
+specify "maven.executable.path"." and asks for the path of `mvn` (`mvn.cmd` on
+Windows). The path must end with that file name. coc-maven saves the answer
+and uses it from then on.
+
+When the configured Maven executable is a relative path, or lies inside a
+workspace folder, it could be a program planted in a project. coc-maven asks
+before it runs it, with a warning and the choices "Allow" and "Use Default
+Maven". "Allow" runs the executable and remembers the choice until Neovim
+exits. "Use Default Maven" runs `mvn` from `$PATH`, not the project's wrapper.
+Dismissing the warning cancels the command.
+
+==============================================================================
+POM EDITING                                                    *coc-maven-pom*
+
+The pom features work in buffers named `pom.xml` or `*.pom` with the filetype
+`xml` (the README shows how to set it). They also work in the poms that
+go-to-definition opens from the local Maven repository.
+
+------------------------------------------------------------------------------
+COMPLETION                                              *coc-maven-completion*
+
+coc-maven completes in a pom when you type `.`, `-` or `<`, see
+|coc-completion|. Its items show `[M]` in the menu. Depending on the cursor
+position it offers:
+
+- Snippets: `dependency` inside `<dependencies>` and `plugin` inside
+  `<plugins>` insert the element with `<groupId>` and `<artifactId>`
+  placeholders.
+- Properties: the properties of the project inside `<properties>`.
+- Artifacts: `groupId`, `artifactId` and `version` candidates for dependencies
+  and plugins, from Maven Central, from the artifact index of coc-java and
+  from the local Maven repository.
+- Schema: the elements and documentation of the Maven 4.0.0 schema. When
+  coc-xml is active, coc-maven leaves these to coc-xml.
+
+Typing on cancels the pending Maven Central lookup. A lookup that fails shows
+its error in a message; the other candidates stay.
+
+Turn the Central lookups off with `maven.completion.gavEnabled` (README).
+
+------------------------------------------------------------------------------
+HOVER                                                        *coc-maven-hover*
+
+Hover (see |coc-hover|) on a `groupId`, `artifactId` or `version` of a
+dependency shows the effective version: the version that Maven resolves after
+inheritance and dependency management. When the effective pom of the project
+is not known yet, the hover starts computing it and waits at most about a
+second; the calculation goes on in the background, and a later hover shows
+the version. Hover on any other element shows the
+documentation of the element from the Maven 4.0.0 schema, headed by its path
+in the pom. When coc-xml is active, only the version hover remains.
+
+------------------------------------------------------------------------------
+DEFINITION                                              *coc-maven-definition*
+
+Go to definition (|CocAction('jumpDefinition')|) in a pom opens:
+
+- on a `dependency` or `plugin`, or on its `groupId`, `artifactId` or
+  `version`: the pom of the artifact in the local Maven repository. When the
+  version is missing, it offers the poms of all local versions.
+- on a `parent`, or on its children: the pom that `<relativePath>` names
+  (default `../pom.xml`), and when that file does not exist, the pom in the
+  local repository. An empty `<relativePath/>` skips the relative path.
+- on a `module`: the `pom.xml` of the module.
+
+------------------------------------------------------------------------------
+CODE ACTIONS                                          *coc-maven-code-actions*
+
+In a pom, |coc-code-actions| offer:
+
+- "Add dependency from Maven Central...", a source action that runs
+  |coc-maven-command-maven.project.addDependency| for the pom.
+- "Resolve conflict for {groupId}:{artifactId}", a quick fix on a dependency
+  conflict warning that changes the version, see |coc-maven-dependencies|.
+
+In Java files, the |coc-maven-searcher| adds its own quick fix.
+
+------------------------------------------------------------------------------
+DIAGNOSTICS                                            *coc-maven-diagnostics*
+
+For every dependency that Maven omits because of a version conflict, coc-maven
+shows a warning on the dependency in the pom that brings it in: >
+    Dependency conflict in {root}: {omitted} conflict with {effective}
+<
+Here {root} is the artifactId of the dependency in the pom, {omitted} is the
+groupId, artifactId and version of the omitted dependency separated by colons,
+and {effective} is the version that Maven kept.
+
+The warnings appear when you open the `pom.xml`, once its dependency tree is
+known, and update while you edit it and after you save it. The quick fix in
+|coc-maven-code-actions| picks a version.
+
+Turn them off with `maven.dependency.enableConflictDiagnostics` (README).
+
+==============================================================================
+EFFECTIVE POM AND DEPENDENCY TREE                        *coc-maven-documents*
+
+|coc-maven-command-maven.project.effectivePom|, or `<CR>` on a project in the
+explorer, opens the effective pom of a project.
+|coc-maven-command-maven.project.showDependencies| opens its dependency tree
+as text. Both open in read-only buffers. The first dependency tree can take
+longer, because Maven downloads the plugin that draws it.
+
+coc-maven also computes both in the background: the effective pom when the
+projects load and after a `pom.xml` changes on disk, the dependency tree at
+the same moments while conflict diagnostics are on. The `maven.pomfile`
+settings in the README turn this off. A result stays valid, also after a
+restart of Neovim, until you save the pom or one of the parent poms it
+inherits from; the next use then runs Maven again.
+
+When Maven fails, for example because the saved pom is broken, the buffer, the
+hover and the explorer keep the last valid state and coc-maven warns once: >
+    Failed to calculate Effective POM - {reason}, keeping the previous state
+<
+For the tree the message names "Dependency Tree". {reason} is the error that
+Maven reports. Fix the pom and save it to try again.
+
+==============================================================================
+DEPENDENCIES                                          *coc-maven-dependencies*
+
+These commands and actions change the dependencies of a pom. They edit the
+buffer of the pom; write it to keep the change.
+
+- Add a dependency: |coc-maven-command-maven.project.addDependency|, or the
+  source action of |coc-maven-code-actions|, searches Maven Central and
+  inserts the chosen artifact.
+- Change a version: "Change version" on a dependency in the explorer, or the
+  conflict quick fix of |coc-maven-code-actions|. It lists the versions of the
+  dependency in the tree, the effective one marked "effective", and "Search
+  Maven Central Repository..." for all versions. The chosen version goes into
+  `<dependencyManagement>`, which is created when it does not exist, and the
+  version in the `<dependency>` element of the pom is removed. Choosing the
+  effective version changes nothing.
+- Exclude a dependency: "Exclude dependency" on a dependency in the explorer
+  adds an `<exclusion>` to the dependency in your pom that brought it in. For
+  a dependency that is written in the pom itself it shows "The dependency
+  written in pom can not be excluded."
+
+They work on a pom with a single `<project>` element; otherwise they fail with
+"Only support POM file with single <project> node.".
+
+==============================================================================
+NEW PROJECTS AND MODULES                                 *coc-maven-archetype*
+
+|coc-maven-command-maven.archetype.generate| creates a project and
+|coc-maven-command-maven.new.module| creates a module in an existing project.
+Both ask for their input step by step.
+
+------------------------------------------------------------------------------
+NEW PROJECT                                      *coc-maven-archetype-project*
+
+The steps are:
+
+- The archetype. The list starts with "No Archetype" and "List all", followed
+  by the archetypes of your local catalog and by popular archetypes. "List
+  all" adds every archetype of the downloaded catalog.
+  |coc-maven-command-maven.archetype.update| downloads a newer catalog.
+- The archetype version, unless you chose "No Archetype".
+- The groupId, with the default `com.example`. It must be lower case
+  identifiers separated by dots, for example `org.example.app`.
+- The artifactId, with the default `demo`. It must be lower case words
+  separated by hyphens.
+- The target folder. When a folder named like the artifactId already exists
+  there, coc-maven warns "A folder [{artifactId}] already exists in the
+  selected folder." and offers "Continue", "Choose another folder" and "Change
+  project name".
+
+With an archetype, Maven generates the project in the background, with the
+version `1.0.0`. Without one, coc-maven creates a basic project: a pom with
+the groupId, the artifactId and the Java version of the parent project (else
+17), the folders `src/main/java`, `src/main/resources` and `src/test/java`,
+and a `Main.java` in the package of the groupId.
+
+When coc-java is active and the new project is in a workspace folder, coc-java
+imports it as `java.import.projectSelection` says. Then coc-maven asks
+"Generated at location: {folder}" and offers "Open", and "Cancel" when a
+workspace folder is open.
+
+Skip that question with `maven.projectOpenBehavior`, see the README.
+
+------------------------------------------------------------------------------
+NEW MODULE                                        *coc-maven-archetype-module*
+
+The module wizard asks for the parent project first (the choice "<None>"
+creates a module without a parent), then for the groupId, the module name (the
+artifactId) and, without a parent, the target folder. With a parent, the
+module goes into the folder of the parent pom. The module comes from the same
+template as a project without an archetype. coc-maven adds the `<parent>`
+element to the new pom and, in the parent pom, a `<module>` entry and the
+packaging `pom`.
+
+==============================================================================
+ARTIFACT SEARCHER                                         *coc-maven-searcher*
+
+The artifact searcher finds the Maven artifact for a Java type that does not
+resolve. It is available when coc-java or coc-java-dev is installed.
+
+When coc-java reports an unresolved type, or an unresolved name that starts
+with a capital letter:
+
+- Hover on the type shows "Add dependency for this type" and opens a list of
+  matching artifacts: "Select the artifact you want to add".
+- The code actions of the type include the quick fix "Add dependency for this
+  type '{Class}'".
+
+The chosen artifact is added to the pom of the project. If the pom does not
+exist or is invalid, coc-maven shows "The pom.xml file does not exist or is
+invalid.". If the searcher cannot start, the first search shows "Unable to
+initialize artifact searcher {reason}".
+
+==============================================================================
+COMMANDS                                                  *coc-maven-commands*
+
+Run a command with `:CocCommand {id}` (see |:CocCommand|); `:CocCommand`
+without an id opens |coc-list-commands|. Arguments after the id reach the
+command as strings. To pass other values, such as a table, use
+|CocAction('runCommand')|.
+
+Many commands take a project as their first argument: a path to a `pom.xml`.
+Without an argument they use the only project of the workspace, or ask with
+the prompt "Select a Maven project ..." when there are several. A path that no
+known project has fails with "No maven project found for pom file {path}". In
+this list, {project} stands for that argument.
+
+------------------------------------------------------------------------------
+EXPLORER COMMANDS                                *coc-maven-commands-explorer*
+
+maven.explorer.show                    *coc-maven-command-maven.explorer.show*
+
+Shows the explorer window, see |coc-maven-explorer|.
+
+maven.explorer.refresh              *coc-maven-command-maven.explorer.refresh*
+
+Reloads the tree of the explorer.
+
+maven.explorer.flat                    *coc-maven-command-maven.explorer.flat*
+maven.explorer.hierarchical    *coc-maven-command-maven.explorer.hierarchical*
+
+The two commands switch the explorer to the flat or to the hierarchical
+layout, see |coc-maven-explorer-nodes|. The choice is written to `maven.view`
+in your user `coc-settings.json`, so it holds for all projects.
+
+------------------------------------------------------------------------------
+GOAL COMMANDS                                       *coc-maven-commands-goals*
+
+maven.goal.execute {project}?           *coc-maven-command-maven.goal.execute*
+
+Asks which goal to run with the prompt "Select the goal to execute ...". The
+list holds "Favorites ...", "Custom ..." and the ten lifecycle phases. The
+choice runs |coc-maven-command-maven.favorites|,
+|coc-maven-command-maven.goal.custom| or the phase.
+
+                                         *coc-maven-command-maven.goal.custom*
+maven.goal.custom {project}? {goal}? {env}?
+
+Runs a goal or a Maven command line in the terminal. Without {goal} it asks
+"Enter custom goal: ", for example `clean package`. An empty answer runs
+nothing. {env} is a table of environment variables for this one command; it
+adds to the variables of your settings and wins on a conflict: >vim
+    call CocAction('runCommand', 'maven.goal.custom',
+          \ '/work/app/pom.xml', 'verify -Pit', {'MAVEN_OPTS': '-Xmx2g'})
+<
+
+maven.goal.clean {project}?               *coc-maven-command-maven.goal.clean*
+maven.goal.validate {project}?         *coc-maven-command-maven.goal.validate*
+maven.goal.compile {project}?           *coc-maven-command-maven.goal.compile*
+maven.goal.test {project}?                 *coc-maven-command-maven.goal.test*
+maven.goal.test-compile {project}? *coc-maven-command-maven.goal.test-compile*
+maven.goal.package {project}?           *coc-maven-command-maven.goal.package*
+maven.goal.verify {project}?             *coc-maven-command-maven.goal.verify*
+maven.goal.install {project}?           *coc-maven-command-maven.goal.install*
+maven.goal.site {project}?                 *coc-maven-command-maven.goal.site*
+maven.goal.deploy {project}?             *coc-maven-command-maven.goal.deploy*
+
+These commands run the lifecycle phase of the same name in the terminal.
+
+maven.lifecycle.execute {args}     *coc-maven-command-maven.lifecycle.execute*
+
+Runs a lifecycle phase given as a table, for your own mappings. {args} has the
+form `{'phase': 'package', 'pomPath': '/work/app/pom.xml'}`, or
+`{'phase': ..., 'project': {'pomPath': ...}}`. The phase must be one of the
+ten phases of |coc-maven-command-maven.goal.clean|, otherwise the command
+fails with "Unsupported Maven lifecycle phase: {phase}". Pass the table with
+|CocAction('runCommand')|.
+
+maven.favorites {project}?                 *coc-maven-command-maven.favorites*
+
+Asks "Select a favorite command ..." and runs the choice in the terminal. The
+list shows the alias, or the command when there is no alias, and the command
+as the description; typing matches both. Without favorites the command shows
+"Found no favorite commands. You can specify `maven.terminal.favorites` in
+Settings.". See |coc-maven-favorites|.
+
+maven.project.addFavorite        *coc-maven-command-maven.project.addFavorite*
+
+Asks "Add favorite" for a Maven command line and adds it, without an alias, to
+the favorites of the current workspace folder. Cancelling or an empty answer
+adds nothing.
+
+maven.history                                *coc-maven-command-maven.history*
+
+Asks for a project (if there are several), lists the commands that ran for it
+in the terminal, the newest first, and runs the one you pick. Without a pick,
+or with an empty history, it shows "No selection made or history was empty".
+See |coc-maven-history|.
+
+------------------------------------------------------------------------------
+PROJECT COMMANDS                                  *coc-maven-commands-project*
+
+                                *coc-maven-command-maven.project.effectivePom*
+maven.project.effectivePom {project}?
+
+Opens the effective pom of the project, see |coc-maven-documents|. Without
+{project} it asks for the project, as described in |coc-maven-commands|.
+While Maven computes it, the progress message reads "Generating effective
+pom...".
+
+                            *coc-maven-command-maven.project.showDependencies*
+maven.project.showDependencies {project}?
+
+Opens the dependency tree of the project as text, see |coc-maven-documents|.
+The progress message reads "Computing dependency tree...". A failure is
+reported as described in |coc-maven-documents|.
+
+                               *coc-maven-command-maven.project.addDependency*
+maven.project.addDependency {project}?
+
+Asks "Search Maven Central Repository" for keywords and lists at most 50
+matching artifacts, the ones used most first: "Select a dependency...". The
+list shows the artifactId and the groupId; typing matches both. Keywords
+shorter than three characters are ignored, and an empty search does nothing.
+The choice opens the pom and inserts a `<dependency>` at the start of
+`<dependencies>`, or creates `<dependencies>` at the end of `<project>`. A
+missing pom fails with "Specified POM {path} does not exist.".
+
+maven.project.openPom {project}?     *coc-maven-command-maven.project.openPom*
+
+Opens the `pom.xml` of the project, or moves the cursor to the window that
+already shows it.
+
+                        *coc-maven-command-maven.project.configuration.update*
+maven.project.configuration.update
+
+Refreshes the explorer and, when coc-java is installed, makes coc-java reload
+the configuration of all Maven projects.
+
+------------------------------------------------------------------------------
+NEW PROJECT COMMANDS                            *coc-maven-commands-archetype*
+
+                                  *coc-maven-command-maven.archetype.generate*
+maven.archetype.generate {answers}?
+
+Creates a project, see |coc-maven-archetype-project|. {answers} is an optional
+table. The keys `groupId`, `artifactId`, `targetFolder`, `archetypeGroupId`,
+`archetypeArtifactId` and `archetypeVersion` skip the steps that they answer;
+with all three archetype keys the archetype steps are skipped.
+
+maven.new.module {answers}?               *coc-maven-command-maven.new.module*
+
+Creates a module, see |coc-maven-archetype-module|. {answers} is an optional
+table with the keys `parentProject`, `groupId`, `artifactId` and
+`targetFolder`; the steps that it answers are skipped.
+
+maven.archetype.update              *coc-maven-command-maven.archetype.update*
+
+Downloads the latest archetype catalog from Maven Central for the list of
+|coc-maven-archetype-project|. The download can take a while; the progress
+message reads "Updating archetype catalog..." and a failure shows "Unable to
+update catalog {reason}".
+
+ vim:tw=78:ts=8:sw=4:sts=4:et:ft=help:norl:
