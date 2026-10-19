@@ -34,7 +34,7 @@ export async function runFavoriteCommandsHandler(target?: FavoriteCommand | Mave
 
     if (selectedCommand) {
         await executeInTerminal({
-            command: selectedCommand.command,
+            command: selectedCommand.debug ? `${selectedCommand.command} -X` : selectedCommand.command,
             pomFile: selectedCommand.project.pomPath
         });
     }
