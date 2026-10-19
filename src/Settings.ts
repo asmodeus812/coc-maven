@@ -100,8 +100,8 @@ export class Settings {
             return ret ?? "**/pom.xml";
         }
 
-        public static prefetchEffectivePom(): boolean {
-            return !!_getMavenSection<string>("pomfile.prefetchEffectivePom");
+        public static prefetchEffectivePom(resourceOrFilepath?: Uri | string): boolean {
+            return !!_getMavenSection<boolean>("pomfile.prefetchEffectivePom", resourceOrFilepath);
         }
     };
 

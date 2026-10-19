@@ -10,11 +10,30 @@ import { MavenProjectManager } from "../project/MavenProjectManager";
 import { getCurrentNode, getEnclosingTag, getNodePath, getTextFromNode, XmlTagName } from "../utils/lexerUtils";
 import { isXmlExtensionEnabled } from "../utils/extensionUtils";
 
+// a hover waits this long for an effective pom being calculated, the calculation itself goes on in the background
+const EFFECTIVE_POM_WAIT_MS = 1000;
+
+async function waitForEffectivePom(mavenProject: MavenProject, token: coc.CancellationToken): Promise<void> {
+    let timer: NodeJS.Timer | undefined;
+    let cancellation: coc.Disposable | undefined;
+    const stopWaiting = new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, EFFECTIVE_POM_WAIT_MS);
+        cancellation = token.onCancellationRequested(() => resolve());
+    });
+    try {
+        // a failed calculation leaves the hover empty
+        await Promise.race([mavenProject.getEffectivePom().catch(() => undefined), stopWaiting]);
+    } finally {
+        clearTimeout(timer);
+        cancellation?.dispose();
+    }
+}
+
 export class HoverProvider implements coc.HoverProvider {
     public async provideHover(
         document: coc.TextDocument,
         position: coc.Position,
-        _token: coc.CancellationToken
+        token: coc.CancellationToken
     ): Promise<coc.Hover | undefined> {
         const documentText: string = document.getText();
         const cursorOffset: number = document.offsetAt(position);
@@ -56,9 +75,11 @@ export class HoverProvider implements coc.HoverProvider {
                         return undefined;
                     }
                     if (!mavenProject.hasEffectivePom) {
-                        // the effective versions come from the effective pom, use the cached one if there is any, do
-                        // not compute it here, that would run maven on every hover
-                        await mavenProject.getEffectivePom({ cacheOnly: true }).catch(() => undefined);
+                        // the effective versions come from the effective pom
+                        await waitForEffectivePom(mavenProject, token);
+                    }
+                    if (token.isCancellationRequested) {
+                        return undefined;
                     }
                     const effectiveVersion: string | undefined = mavenProject.getDependencyVersion(groupIdHint, artifactIdHint);
                     if (effectiveVersion) {

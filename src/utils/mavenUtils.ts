@@ -24,10 +24,9 @@ const OPTIONS_DEPENDENCY_GRAPH = ["-DgraphFormat=text", "-DshowDuplicates", "-Ds
  * Get effective pom of a Maven project.
  *
  * @param pomPath absolute path of pom.xml
- * @param options specify the way you want to get effective pom. By default it 1) reads from cache if exists 2) calculate if not.
- * @returns full content of effective pom
+ * @returns full content of effective pom, read from the cache while the pom is unchanged, calculated otherwise
  */
-export async function rawEffectivePom(pomPath: string, options?: { cacheOnly?: boolean }): Promise<string | undefined> {
+export async function rawEffectivePom(pomPath: string): Promise<string | undefined> {
     const outputPath: string = getTempFolder(pomPath);
     const epomPath = `${outputPath}.epom`;
     const mtimePath = `${outputPath}.mtime`;
@@ -35,7 +34,7 @@ export async function rawEffectivePom(pomPath: string, options?: { cacheOnly?: b
     const stat: fse.Stats = await fse.stat(pomPath);
     const mtimeMs: string = stat.mtimeMs.toString();
 
-    if (cachedMTimeMs === mtimeMs || options?.cacheOnly) {
+    if (cachedMTimeMs === mtimeMs) {
         return await readFileIfExists(epomPath);
     }
 
