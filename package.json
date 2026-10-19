@@ -218,6 +218,7 @@
                     "scope": "window",
                     "description": "Default action when prompted to open a detected Maven project.",
                     "enum": [
+                        "Interactive",
                         "Open",
                         "Cancel"
                     ]
