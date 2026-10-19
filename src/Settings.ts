@@ -20,10 +20,6 @@ export class Settings {
         return ret ?? [];
     }
 
-    public static showInExplorerContextMenu(): boolean {
-        return !!_getMavenSection<boolean>("maven.showInExplorerContextMenu");
-    }
-
     public static enableConflictDiagnostics(): boolean {
         return !!_getMavenSection<boolean>("dependency.enableConflictDiagnostics");
     }
