@@ -3,56 +3,49 @@
 
 import { Disposable } from "coc.nvim";
 
-export class Queue<T> {
-    private readonly _store: T[] = [];
+// every task runs maven in the background, this bounds how many of them run at the same time
+const MAX_RUNNING_TASKS = 4;
 
-    public push(val: T): void {
-        this._store.push(val);
-    }
-
-    public pop(): T | undefined {
-        return this._store.shift();
-    }
-
-    public empty(): boolean {
-        if (this._store.length === 0) {
-            return true;
-        }
-        return false;
-    }
-}
-
+/**
+ * Runs tasks in the background, at most one per key at a time. A new task for a key replaces the one still waiting for
+ * it, only the latest state of a key is worth running.
+ */
 class TaskExecutor implements Disposable {
-    private readonly _tasks: Queue<CallableFunction> = new Queue();
+    private readonly _waiting: Map<string, CallableFunction> = new Map();
 
-    private _isExecuting = false;
+    private readonly _running: Set<string> = new Set();
 
-    public execute(task: CallableFunction): void {
-        this._tasks.push(task);
-        this._pickAndRun().catch(console.error);
+    public execute(key: string, task: CallableFunction): void {
+        this._waiting.set(key, task);
+        this._pickAndRun();
     }
 
     public dispose(): void {
         // do nothing
     }
 
-    private async _pickAndRun(): Promise<void> {
-        if (this._isExecuting) {
-            return;
+    private _pickAndRun(): void {
+        for (const [key, task] of this._waiting) {
+            if (this._running.size >= MAX_RUNNING_TASKS) {
+                break;
+            }
+            if (!this._running.has(key)) {
+                this._waiting.delete(key);
+                this._running.add(key);
+                this._run(task).finally(() => {
+                    this._running.delete(key);
+                    this._pickAndRun();
+                });
+            }
         }
-        this._isExecuting = true;
-        const currentTask: CallableFunction | undefined = this._tasks.pop();
-        if (!currentTask) {
-            this._isExecuting = false;
-            return;
-        }
+    }
+
+    private async _run(task: CallableFunction): Promise<void> {
         try {
-            await currentTask();
+            await task();
         } catch (error) {
             console.warn((error as Error).message);
         }
-        this._isExecuting = false;
-        this._pickAndRun().catch(console.error);
     }
 }
 

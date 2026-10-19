@@ -43,6 +43,8 @@ import { executeInTerminal } from "./utils/mavenUtils";
 import { dependenciesContentUri, effectivePomContentUri, registerCommand, selectProjectIfNecessary } from "./utils/uiUtils";
 import { focusResourceLocation } from "./utils/editUtils";
 
+const POM_REFRESH_DELAY_MS = 1000;
+
 export async function activate(context: coc.ExtensionContext): Promise<void> {
     await loadPackageInfo(context);
     await doActivate(context);
@@ -275,29 +277,41 @@ export async function doActivate(context: coc.ExtensionContext): Promise<void> {
     await initMavenXsd();
 }
 
+async function refreshChangedPom(pomPath: string): Promise<void> {
+    const project: MavenProject | undefined = MavenProjectManager.get(pomPath);
+    if (project) {
+        // notify dependencies/effectivePOM to update
+        contentProvider.invalidate(effectivePomContentUri(project.pomPath));
+        contentProvider.invalidate(dependenciesContentUri(project.pomPath));
+
+        await project.refresh();
+        if (Settings.Pomfile.autoUpdateEffectivePOM()) {
+            taskExecutor.execute(project.pomPath, async () => {
+                await project.refreshEffectivePom();
+                MavenExplorerProvider.getInstance().refresh(project);
+            });
+        }
+    }
+}
+
 function registerPomFileWatcher(context: coc.ExtensionContext): void {
     const watcher: coc.FileSystemWatcher = coc.workspace.createFileSystemWatcher(Settings.Pomfile.globPattern());
+    // a burst of changes to one pom (autosave, :wa, a formatter) refreshes it once, after it stayed unchanged for a while
+    const pendingRefreshes = new Map<string, NodeJS.Timer>();
     watcher.onDidCreate((e: Uri) => MavenExplorerProvider.getInstance().addProject(e.fsPath), null, context.subscriptions);
     watcher.onDidChange(
-        async (e: Uri) => {
-            const project: MavenProject | undefined = MavenProjectManager.get(e.fsPath);
-            if (project) {
-                // notify dependencies/effectivePOM to update
-                contentProvider.invalidate(effectivePomContentUri(project.pomPath));
-                contentProvider.invalidate(dependenciesContentUri(project.pomPath));
-
-                await project.refresh();
-                if (Settings.Pomfile.autoUpdateEffectivePOM()) {
-                    taskExecutor.execute(async () => {
-                        await project.refreshEffectivePom();
-                        MavenExplorerProvider.getInstance().refresh(project);
-                    });
-                }
-            }
+        (e: Uri) => {
+            clearTimeout(pendingRefreshes.get(e.fsPath));
+            const timer: NodeJS.Timer = setTimeout(() => {
+                pendingRefreshes.delete(e.fsPath);
+                refreshChangedPom(e.fsPath).catch((error) => console.warn((error as Error).message));
+            }, POM_REFRESH_DELAY_MS);
+            pendingRefreshes.set(e.fsPath, timer);
         },
         null,
         context.subscriptions
     );
+    context.subscriptions.push(coc.Disposable.create(() => pendingRefreshes.forEach((timer) => clearTimeout(timer))));
     watcher.onDidDelete((e: Uri) => MavenExplorerProvider.getInstance().removeProject(e.fsPath), null, context.subscriptions);
     context.subscriptions.push(watcher);
 }

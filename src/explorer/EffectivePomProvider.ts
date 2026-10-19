@@ -7,18 +7,15 @@ import { IEffectivePom } from "./model/IEffectivePom";
 
 export class EffectivePomProvider {
     private readonly pomPath: string;
-    private calculation?: {
-        cacheOnly: boolean;
-        promise: Promise<IEffectivePom | undefined>;
-    };
+    private calculation?: Promise<IEffectivePom | undefined>;
 
     constructor(pomPath: string) {
         this.pomPath = pomPath;
     }
 
-    private async readEffectivePom(options: { cacheOnly?: boolean }): Promise<IEffectivePom | undefined> {
+    private async readEffectivePom(): Promise<IEffectivePom | undefined> {
         const pomPath: string = this.pomPath;
-        const ePomString: string | undefined = await rawEffectivePom(pomPath, options);
+        const ePomString: string | undefined = await rawEffectivePom(pomPath);
         if (ePomString === undefined) {
             return undefined;
         }
@@ -27,21 +24,14 @@ export class EffectivePomProvider {
     }
 
     /**
-     * Concurrent requests with the same options share the same in-flight calculation, requests with different options wait
-     * for the in-flight calculation to settle first, its result or failure belongs to its own callers.
+     * Concurrent requests share the in-flight calculation and its result or failure.
      */
-    public async getEffectivePom(options?: { cacheOnly?: boolean }): Promise<IEffectivePom | undefined> {
-        const cacheOnly = options?.cacheOnly === true;
-        while (this.calculation) {
-            const current = this.calculation;
-            if (current.cacheOnly === cacheOnly) {
-                return current.promise;
-            }
-            await Promise.allSettled([current.promise]);
+    public async getEffectivePom(): Promise<IEffectivePom | undefined> {
+        if (this.calculation) {
+            return this.calculation;
         }
-
-        const promise = this.readEffectivePom({ cacheOnly });
-        this.calculation = { cacheOnly, promise };
+        const promise = this.readEffectivePom();
+        this.calculation = promise;
         try {
             return await promise;
         } finally {

@@ -40,6 +40,7 @@ export class MavenProjectManager {
                 }
             });
         });
+        newProjects.forEach((p) => p.prefetchEffectivePom());
         return allProjects;
     }
 
@@ -71,6 +72,7 @@ export class MavenProjectManager {
         const newProject = new MavenProject(pomPath);
         newProject.parsePom();
         MavenProjectManager.getInstance()._projectMap.set(pomPath, newProject);
+        newProject.prefetchEffectivePom();
     }
 
     public static remove(pomPath: string): void {

@@ -7,6 +7,7 @@ import * as _ from "lodash";
 import * as path from "path";
 import { MavenProjectManager } from "../../project/MavenProjectManager";
 import { Settings } from "../../Settings";
+import { taskExecutor } from "../../taskExecutor";
 import { rawProfileList } from "../../utils/mavenUtils";
 import { Utils } from "../../utils/Utils";
 import { EffectivePomProvider } from "../EffectivePomProvider";
@@ -190,9 +191,15 @@ export class MavenProject implements ITreeItem {
         await this.getEffectivePom();
     }
 
-    public async getEffectivePom(options?: { cacheOnly?: boolean }): Promise<IEffectivePom | undefined> {
+    public prefetchEffectivePom(): void {
+        if (Settings.Pomfile.prefetchEffectivePom(this.pomPath)) {
+            taskExecutor.execute(this.pomPath, async () => this.getEffectivePom());
+        }
+    }
+
+    public async getEffectivePom(): Promise<IEffectivePom | undefined> {
         try {
-            const result: IEffectivePom | undefined = await this.ePomProvider.getEffectivePom(options);
+            const result: IEffectivePom | undefined = await this.ePomProvider.getEffectivePom();
             this._ePom = result?.ePom;
             return result;
         } catch (error) {

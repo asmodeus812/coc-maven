@@ -182,12 +182,6 @@
                     "scope": "window",
                     "description": "Layout of the Maven Projects view: show modules as a flat list or as a nested hierarchy."
                 },
-                "maven.showInExplorerContextMenu": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Show Maven commands in the Explorer file/folder context menu.",
-                    "scope": "resource"
-                },
                 "maven.pomfile.globPattern": {
                     "type": "string",
                     "default": "**/pom.xml",
@@ -196,15 +190,15 @@
                 },
                 "maven.pomfile.autoUpdateEffectivePOM": {
                     "type": "boolean",
-                    "default": false,
+                    "default": true,
                     "description": "Automatically recompute the Effective POM when a POM file changes.",
                     "scope": "window"
                 },
                 "maven.pomfile.prefetchEffectivePom": {
                     "type": "boolean",
-                    "default": false,
+                    "default": true,
                     "description": "Precompute Effective POMs in the background to speed up Maven features.",
-                    "scope": "application"
+                    "scope": "resource"
                 },
                 "maven.dependency.enableConflictDiagnostics": {
                     "type": "boolean",
