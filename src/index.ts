@@ -179,7 +179,7 @@ export async function doActivate(context: coc.ExtensionContext): Promise<void> {
     );
     registerCommand(
         context,
-        "maven.exploerer.dependency.action",
+        "maven.explorer.dependency.action",
         async (project: MavenProject) => {
             type CommandItem = coc.QuickPickItem & { command: string };
             const actions = [
