@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 import * as coc from "coc.nvim";
+import { Settings } from "../../../Settings";
 import { getArtifacts, getVersions, IArtifactMetadata, IVersionMetadata } from "../../../utils/requestUtils";
 import { COMMAND_COMPLETION_ITEM_SELECTED, INFO_COMPLETION_ITEM_SELECTED } from "../../constants";
 import { IArtifactCompletionProvider } from "./IArtifactProvider";
@@ -9,6 +10,9 @@ import { getSortText } from "../../utils";
 
 export class FromCentral implements IArtifactCompletionProvider {
     public async getGroupIdCandidates(groupIdHint: string, artifactIdHint: string, token?: coc.CancellationToken): Promise<coc.CompletionItem[]> {
+        if (!Settings.isGAVCompletionEnabled()) {
+            return [];
+        }
         const keywords: string[] = [...groupIdHint.split("."), ...artifactIdHint.split("-")];
         const docs: IArtifactMetadata[] = await getArtifacts(keywords, token);
         const groupIds: string[] = Array.from(new Set(docs.map((doc) => doc.g)).values());
@@ -30,6 +34,9 @@ export class FromCentral implements IArtifactCompletionProvider {
     }
 
     public async getArtifactIdCandidates(groupIdHint: string, artifactIdHint: string, token?: coc.CancellationToken): Promise<coc.CompletionItem[]> {
+        if (!Settings.isGAVCompletionEnabled()) {
+            return [];
+        }
         const keywords: string[] = [...groupIdHint.split("."), ...artifactIdHint.split("-")];
         const docs: IArtifactMetadata[] = await getArtifacts(keywords, token);
         const commandOnSelection: coc.Command = {
@@ -52,7 +59,7 @@ export class FromCentral implements IArtifactCompletionProvider {
     }
 
     public async getVersionCandidates(groupId: string, artifactId: string, token?: coc.CancellationToken): Promise<coc.CompletionItem[]> {
-        if (!groupId && !artifactId) {
+        if (!Settings.isGAVCompletionEnabled() || (!groupId && !artifactId)) {
             return [];
         }
 
