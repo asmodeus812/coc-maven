@@ -56,7 +56,7 @@
                 "maven.completion.gavEnabled": {
                     "type": "boolean",
                     "default": true,
-                    "description": "Enable GAV (GroupId, ArtifactId, Version) completions in pom.xml, these query the remote Maven Central search service.",
+                    "description": "Query the remote Maven Central search service for GAV (GroupId, ArtifactId, Version) completions in pom.xml. The completions from the Java language server index and the local repository stay on.",
                     "scope": "window"
                 },
                 "maven.settingsFile": {
