@@ -269,7 +269,7 @@
             },
             {
                 "command": "maven.explorer.hierarchical",
-                "title": "Switch to Tree View"
+                "title": "Switch to Hierarchical View"
             },
             {
                 "command": "maven.project.addDependency",
