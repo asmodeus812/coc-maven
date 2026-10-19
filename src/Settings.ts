@@ -29,11 +29,11 @@ export class Settings {
     }
 
     public static changeToFlatView(): void {
-        workspace.getConfiguration().update("maven.view", "flat", false);
+        workspace.getConfiguration().update("maven.view", "flat", true);
     }
 
     public static changeToHierarchicalView(): void {
-        workspace.getConfiguration().update("maven.view", "hierarchical", false);
+        workspace.getConfiguration().update("maven.view", "hierarchical", true);
     }
 
     public static storeFavorite(favorite: FavoriteFormat): void {
