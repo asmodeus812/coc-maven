@@ -82,7 +82,7 @@
                 },
                 "maven.executable.preferMavenWrapper": {
                     "type": "boolean",
-                    "default": "true",
+                    "default": true,
                     "description": "Prefer using the Maven Wrapper (mvnw) if present in the project.",
                     "scope": "resource"
                 },
@@ -184,7 +184,7 @@
                 },
                 "maven.showInExplorerContextMenu": {
                     "type": "boolean",
-                    "default": "true",
+                    "default": true,
                     "description": "Show Maven commands in the Explorer file/folder context menu.",
                     "scope": "resource"
                 },
@@ -208,7 +208,7 @@
                 },
                 "maven.dependency.enableConflictDiagnostics": {
                     "type": "boolean",
-                    "default": "true",
+                    "default": true,
                     "description": "Enable diagnostics for dependency version and conflict issues in the dependency tree.",
                     "scope": "window"
                 },
