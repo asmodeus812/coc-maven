@@ -210,7 +210,7 @@ export class Utils {
         if (selected) {
             await executeInTerminal({ command: selected.command, pomFile: selected.pomPath });
         } else {
-            await window.showWarningMessage("No selection made or histroy was empty");
+            await window.showWarningMessage("No selection made or history was empty");
         }
     }
 
