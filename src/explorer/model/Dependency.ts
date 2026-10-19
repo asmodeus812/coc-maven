@@ -70,7 +70,7 @@ export class Dependency implements ITreeItem, ITreeNode {
         treeItem.description = descriptions.join(" ");
         treeItem.command = {
             title: "Goto dependency definition",
-            command: "maven.exploerer.dependency.action",
+            command: "maven.explorer.dependency.action",
             arguments: [this]
         } as coc.Command;
         return treeItem;
