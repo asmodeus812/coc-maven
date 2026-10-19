@@ -8,7 +8,7 @@ const JAVA_EXECUTE_WORKSPACE_COMMAND = "java.execute.workspaceCommand";
 
 const JAVA_COMMAND_MESSAGE_MAP = {
     ["java.maven.initializeSearcher"]: "Initializing artifact searcher...",
-    ["java.maven.searchArtifact"]: "Sarching for a maven artifact...",
+    ["java.maven.searchArtifact"]: "Searching for a maven artifact...",
     ["java.maven.addDependency"]: "Adding dependency to build file...",
     ["java.maven.controlContext"]: "Evaluating control context..."
 };
