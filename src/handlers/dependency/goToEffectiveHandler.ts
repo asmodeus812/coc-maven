@@ -21,7 +21,7 @@ export async function goToEffectiveHandler(view: coc.TreeView<ITreeItem>, node?:
         throw new Error("Failed to find maven projects.");
     }
 
-    const treeItem: Dependency | undefined = searchFirstEffective(project.dependencyNodes ?? [], fullArtifactName);
+    const treeItem: Dependency | undefined = searchFirstEffective((await project.getDependencyTree())?.treeNodes ?? [], fullArtifactName);
     if (treeItem === undefined) {
         throw new Error(`Failed to find effective dependency ${fullArtifactName}.`);
     }

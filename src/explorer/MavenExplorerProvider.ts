@@ -41,9 +41,10 @@ export class MavenExplorerProvider implements TreeDataProvider<ITreeItem> {
         this.refresh();
     }
 
-    public async addWorkspaceFolder(folder: coc.WorkspaceFolder): Promise<void> {
-        await MavenProjectManager.loadProjects(folder);
+    public async addWorkspaceFolder(folder: coc.WorkspaceFolder): Promise<MavenProject[]> {
+        const projects: MavenProject[] = await MavenProjectManager.loadProjects(folder);
         this.refresh();
+        return projects;
     }
 
     public async removeWorkspaceFolder(folder: coc.WorkspaceFolder): Promise<void> {

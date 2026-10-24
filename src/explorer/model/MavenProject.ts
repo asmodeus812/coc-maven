@@ -6,15 +6,17 @@ import * as fs from "fs";
 import * as _ from "lodash";
 import * as path from "path";
 import { MavenProjectManager } from "../../project/MavenProjectManager";
+import { rawDependencyTree, rawEffectivePom, rawProfileList } from "../../utils/mavenUtils";
+import { parseDependencyTree } from "../../utils/parseDependencyTree";
+import { parseEffectivePom } from "../../utils/parseEffectivePom";
 import { Settings } from "../../Settings";
-import { taskExecutor } from "../../taskExecutor";
-import { rawProfileList } from "../../utils/mavenUtils";
 import { Utils } from "../../utils/Utils";
-import { EffectivePomProvider } from "../EffectivePomProvider";
 import { MavenExplorerProvider } from "../MavenExplorerProvider";
+import { MavenOutputProvider } from "../MavenOutputProvider";
 import { DependenciesMenu } from "./DependenciesMenu";
 import { Dependency } from "./Dependency";
 import { FavoritesMenu } from "./FavoritesMenu";
+import { IDependencyTree } from "./IDependencyTree";
 import { IEffectivePom } from "./IEffectivePom";
 import { ITreeItem } from "./ITreeItem";
 import { LifecycleMenu } from "./LifecycleMenu";
@@ -26,18 +28,36 @@ import { ProfilesMenu } from "./ProfilesMenu";
 export class MavenProject implements ITreeItem {
     public parent?: MavenProject; // assigned if it's specified as one of parent project's modules
     public pomPath: string;
-    public _fullDependencyText: string | undefined;
-    public _conflictNodes: Dependency[] | undefined;
-    public dependencyNodes: Dependency[] | undefined;
-    private readonly ePomProvider: EffectivePomProvider;
-    private _ePom: any;
+    private readonly effectivePomProvider: MavenOutputProvider<IEffectivePom>;
+    private readonly dependencyTreeProvider: MavenOutputProvider<IDependencyTree>;
     private _pom: any;
     private readonly properties: Map<string, string> = new Map();
     public profiles: MavenProfile[] | undefined;
 
     constructor(pomPath: string) {
         this.pomPath = pomPath;
-        this.ePomProvider = new EffectivePomProvider(pomPath);
+        this.effectivePomProvider = new MavenOutputProvider(pomPath, "epom", "Effective POM", rawEffectivePom, parseEffectivePom, () =>
+            this.sourcePomPaths()
+        );
+        this.dependencyTreeProvider = new MavenOutputProvider(
+            pomPath,
+            "deps.txt",
+            "Dependency Tree",
+            rawDependencyTree,
+            parseDependencyTree,
+            () => this.sourcePomPaths()
+        );
+    }
+
+    // the pom and the parent poms on disk it inherits from, a change of any of them changes the outputs of this project
+    private sourcePomPaths(): string[] {
+        const paths: string[] = [this.pomPath];
+        let parentPomPath: string | undefined = this.parentPomPath;
+        while (parentPomPath !== undefined && fs.existsSync(parentPomPath) && !paths.includes(path.resolve(parentPomPath))) {
+            paths.push(path.resolve(parentPomPath));
+            parentPomPath = MavenProjectManager.get(parentPomPath)?.parentPomPath;
+        }
+        return paths;
     }
 
     public get name(): string {
@@ -48,14 +68,6 @@ export class MavenProject implements ITreeItem {
         } else {
             return this._pom?.project?.artifactId?.[0];
         }
-    }
-
-    public get fullText(): string | undefined {
-        return this._fullDependencyText;
-    }
-
-    public set fullText(text: string) {
-        this._fullDependencyText = text;
     }
 
     public get groupId(): string {
@@ -83,34 +95,18 @@ export class MavenProject implements ITreeItem {
         return moduleNames ?? [];
     }
 
-    public get plugins(): MavenPlugin[] {
-        let plugins: any[] | undefined;
-        if (_.has(this._ePom, "projects.project")) {
-            // multi-module project
-            const project: any = this._ePom.projects.project.find((elem: any) => this.name === _.get(elem, "artifactId[0]"));
-            if (project) {
-                plugins = _.get(project, "build[0].plugins[0].plugin");
-            }
-        } else {
-            // single-project
-            plugins = _.get(this._ePom, "project.build[0].plugins[0].plugin");
-        }
-        return this._convertXmlPlugin(plugins);
+    public async getPlugins(): Promise<MavenPlugin[]> {
+        return this._convertXmlPlugin(_.get(await this.getEffectiveProject(), "build[0].plugins[0].plugin"));
     }
 
-    public get dependencies(): Dependency[] {
-        let deps: any[] = [];
-        if (_.has(this._ePom, "projects.project")) {
-            // multi-module project
-            const project: any = this._ePom.projects.project.find((elem: any) => this.name === _.get(elem, "artifactId[0]"));
-            if (project) {
-                deps = _.get(project, "dependencies[0].dependency");
-            }
+    // the node of this project in its effective pom, a multi-module effective pom lists every module by its artifactId
+    private async getEffectiveProject(): Promise<any> {
+        const ePom: any = (await this.getEffectivePom())?.ePom;
+        if (_.has(ePom, "projects.project")) {
+            return ePom.projects.project.find((elem: any) => this.artifactId === _.get(elem, "artifactId[0]"));
         } else {
-            // single-project
-            deps = _.get(this._ePom, "project.dependencies[0].dependency");
+            return _.get(ePom, "project");
         }
-        return this._convertXmlDependency(deps);
     }
 
     /**
@@ -147,14 +143,6 @@ export class MavenProject implements ITreeItem {
         return undefined;
     }
 
-    public get conflictNodes(): Dependency[] {
-        return this._conflictNodes ?? [];
-    }
-
-    public set conflictNodes(nodes: Dependency[]) {
-        this._conflictNodes = nodes;
-    }
-
     public async getTreeItem(): Promise<coc.TreeItem> {
         await this.parsePom();
         const label = this.artifactId ? Settings.getExploreProjectName(this) : "Unknown";
@@ -187,24 +175,22 @@ export class MavenProject implements ITreeItem {
         return ret;
     }
 
-    public async refreshEffectivePom(): Promise<void> {
-        await this.getEffectivePom();
-    }
-
-    public prefetchEffectivePom(): void {
-        if (Settings.Pomfile.prefetchEffectivePom(this.pomPath)) {
-            taskExecutor.execute(this.pomPath, async () => this.getEffectivePom());
-        }
-    }
-
     public async getEffectivePom(): Promise<IEffectivePom | undefined> {
-        try {
-            const result: IEffectivePom | undefined = await this.ePomProvider.getEffectivePom();
-            this._ePom = result?.ePom;
-            return result;
-        } catch (error) {
-            throw new Error(`Failed to calculate Effective POM - ${(error as Error).message}`);
-        }
+        return this.effectivePomProvider.get();
+    }
+
+    public async getDependencyTree(): Promise<IDependencyTree | undefined> {
+        return this.dependencyTreeProvider.get();
+    }
+
+    // the pom changed on disk, the next read of the effective pom loads it again
+    public invalidateEffectivePom(): void {
+        this.effectivePomProvider.invalidate();
+    }
+
+    // the pom changed on disk, the next read of the dependency tree loads it again
+    public invalidateDependencyTree(): void {
+        this.dependencyTreeProvider.invalidate();
     }
 
     public async refresh(): Promise<void> {
@@ -216,28 +202,20 @@ export class MavenProject implements ITreeItem {
             this._pom = await Utils.parseXmlFile(this.pomPath);
             this.updateProperties();
         } catch (error) {
+            // a pom that does not parse (being edited, saved incomplete) keeps the last valid one, its identity finds
+            // the project in a multi-module effective pom and the hover keeps the last valid versions
             console.warn((error as Error).message);
-            this._pom = undefined;
         }
     }
 
-    public get hasEffectivePom(): boolean {
-        return this._ePom !== undefined;
-    }
-
-    public getDependencyVersion(gid: string, aid: string): string | undefined {
-        // from effective POM
-        const deps: Dependency[] | undefined = this.dependencies;
-        const targetDep: Dependency | undefined = deps?.find((elem) => elem.groupId === gid && elem.artifactId === aid);
-        if (targetDep?.version) {
-            return targetDep.version;
-        }
-        // from dependency plugin
-        const targetNode = this.dependencyNodes?.find((n) => n.groupId === gid && n.artifactId === aid);
-        if (targetNode?.version) {
-            return targetNode.version;
-        }
-        return undefined;
+    public async getDependencyVersion(gid: string, aid: string): Promise<string | undefined> {
+        // a dependency of the project, or one its dependency management sets the version of
+        const project: any = await this.getEffectiveProject();
+        const deps: Dependency[] = [
+            ...this._convertXmlDependency(_.get(project, "dependencies[0].dependency")),
+            ...this._convertXmlDependency(_.get(project, "dependencyManagement[0].dependencies[0].dependency"))
+        ];
+        return deps.find((elem) => elem.groupId === gid && elem.artifactId === aid && elem.version)?.version;
     }
 
     private async _refreshPom(): Promise<void> {
@@ -325,8 +303,8 @@ export class MavenProject implements ITreeItem {
     /**
      * get properties from effective pom
      */
-    public getProperties() {
-        const propertiesNode = _.get(this._ePom, "project.properties[0]");
+    public async getProperties(): Promise<string[] | undefined> {
+        const propertiesNode = _.get(await this.getEffectiveProject(), "properties[0]");
         if (typeof propertiesNode === "object") {
             return Object.keys(propertiesNode);
         } else {

@@ -21,45 +21,47 @@ const GOAL_DEPENDENCY_GRAPH = "com.github.ferstl:depgraph-maven-plugin:4.0.3:gra
 const OPTIONS_DEPENDENCY_GRAPH = ["-DgraphFormat=text", "-DshowDuplicates", "-DshowConflicts", "-DshowVersions", "-DshowGroupIds"];
 
 /**
- * Get effective pom of a Maven project.
+ * Runs maven to write the effective pom of a project.
  *
  * @param pomPath absolute path of pom.xml
- * @returns full content of effective pom, read from the cache while the pom is unchanged, calculated otherwise
+ * @param token cancelling it kills the maven process
+ * @returns full content of the effective pom
  */
-export async function rawEffectivePom(pomPath: string): Promise<string | undefined> {
-    const outputPath: string = getTempFolder(pomPath);
-    const epomPath = `${outputPath}.epom`;
-    const mtimePath = `${outputPath}.mtime`;
-    const cachedMTimeMs: string | undefined = await readFileIfExists(mtimePath);
-    const stat: fse.Stats = await fse.stat(pomPath);
-    const mtimeMs: string = stat.mtimeMs.toString();
-
-    if (cachedMTimeMs === mtimeMs) {
-        return await readFileIfExists(epomPath);
-    }
-
-    await executeInBackground({ pomFile: pomPath, args: ["-B", `-Doutput=${epomPath}`, "help:effective-pom"] });
-    await fse.writeFile(mtimePath, mtimeMs);
-    return await readFileIfExists(epomPath);
+export async function rawEffectivePom(pomPath: string, token?: coc.CancellationToken): Promise<string | undefined> {
+    const outputPath: string = mavenOutputPath(pomPath, "epom");
+    await executeInBackground({ pomFile: pomPath, args: ["-B", `-Doutput=${outputPath}`, "help:effective-pom"], token });
+    return await readFileIfExists(outputPath);
 }
 
-export async function rawDependencyTree(pomPath: string): Promise<string | undefined> {
-    const outputPath: string = getTempFolder(pomPath);
-    const dependencyGraphPath = `${outputPath}.deps.txt`;
-    const outputDirectory: string = path.dirname(dependencyGraphPath);
-    const outputFileName: string = path.basename(dependencyGraphPath);
+/**
+ * Runs maven to write the dependency tree of a project.
+ *
+ * @param pomPath absolute path of pom.xml
+ * @param token cancelling it kills the maven process
+ * @returns the tree as text
+ */
+export async function rawDependencyTree(pomPath: string, token?: coc.CancellationToken): Promise<string | undefined> {
+    const outputPath: string = mavenOutputPath(pomPath, "deps.txt");
     await executeInBackground({
         pomFile: pomPath,
+        token,
         args: [
             "-B",
             "-N",
             ...OPTIONS_DEPENDENCY_GRAPH,
-            `-DoutputDirectory=${outputDirectory}`,
-            `-DoutputFileName=${outputFileName}`,
+            `-DoutputDirectory=${path.dirname(outputPath)}`,
+            `-DoutputFileName=${path.basename(outputPath)}`,
             GOAL_DEPENDENCY_GRAPH
         ]
     });
-    return await readFileIfExists(path.join(outputDirectory, outputFileName));
+    return await readFileIfExists(outputPath);
+}
+
+/**
+ * Path of a maven output file of a pom, in the storage of the extension.
+ */
+export function mavenOutputPath(pomPath: string, name: string): string {
+    return `${getTempFolder(pomPath)}.${name}`;
 }
 
 export async function pluginDescription(pluginId: string, pomPath: string): Promise<string | undefined> {
@@ -92,6 +94,8 @@ export async function executeInBackground(options: {
     pomFile?: string;
     cwd?: string;
     env?: { [key: string]: string };
+    // cancelling it kills the maven process
+    token?: coc.CancellationToken;
 }): Promise<unknown> {
     const workspaceFolder: coc.WorkspaceFolder | undefined = options.pomFile
         ? coc.workspace.getWorkspaceFolder(coc.Uri.file(options.pomFile).toString())
@@ -129,10 +133,12 @@ export async function executeInBackground(options: {
             reject(new Error(`Error occurred in background process. ${(error as Error).message}`));
             return;
         }
+        const cancellation: coc.Disposable | undefined = options.token?.onCancellationRequested(() => proc.kill());
         proc.on("error", (err: Error) => {
             reject(new Error(`Error occurred in background process. ${err.message}`));
         });
         proc.on("close", (code: number | null, signal: string | null) => {
+            cancellation?.dispose();
             if (code !== null) {
                 if (code === 0) {
                     resolve(code);
@@ -325,7 +331,7 @@ function wrappedWithQuotes(mvn: string): string {
     }
 }
 
-async function readFileIfExists(filepath: string): Promise<string | undefined> {
+export async function readFileIfExists(filepath: string): Promise<string | undefined> {
     if (await fse.pathExists(filepath)) {
         return (await fse.readFile(filepath)).toString();
     }

@@ -28,7 +28,7 @@ export class PropertiesProvider implements IXmlCompletionProvider {
         switch (tagNode.tagName) {
             case XmlTagName.Properties: {
                 const project = MavenProjectManager.get(document.uri);
-                const props = project?.getProperties();
+                const props = await project?.getProperties();
 
                 if (props) {
                     const propertyToCompletionItem = (prop: string) => {

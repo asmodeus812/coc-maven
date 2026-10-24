@@ -9,19 +9,22 @@ import { MavenProjectManager } from '../project/MavenProjectManager'
 export class ConflictResolver implements coc.CodeActionProvider {
     public static readonly providedCodeActionKinds: coc.CodeActionKind[] = [coc.CodeActionKind.QuickFix];
 
-    public provideCodeActions(
+    public async provideCodeActions(
         document: coc.TextDocument,
         _range: coc.Range,
         context: coc.CodeActionContext,
         _token: coc.CancellationToken
-    ): coc.CodeAction[] {
-        return context.diagnostics
-            .filter((diagnostic) => diagnostic.code === MAVEN_DEPENDENCY_CONFLICT)
-            .map((diagnostic) => this.createCommandCodeAction(diagnostic, document));
+    ): Promise<coc.CodeAction[]> {
+        const diagnostics: coc.Diagnostic[] = context.diagnostics.filter((diagnostic) => diagnostic.code === MAVEN_DEPENDENCY_CONFLICT);
+        if (diagnostics.length === 0) {
+            return [];
+        }
+        const fullText: string | undefined = (await MavenProjectManager.get(document.uri)?.getDependencyTree())?.conflictText;
+        return diagnostics.map((diagnostic) => this.createCommandCodeAction(diagnostic, document, fullText));
     }
 
-    private createCommandCodeAction(diagnostic: coc.Diagnostic, document: coc.TextDocument): coc.CodeAction {
-        const node: Dependency | undefined = diagnosticProvider.map.get(diagnostic);
+    private createCommandCodeAction(diagnostic: coc.Diagnostic, document: coc.TextDocument, fullText: string | undefined): coc.CodeAction {
+        const node: Dependency | undefined = diagnosticProvider.getConflictNode(document.uri, diagnostic);
         if (node === undefined) {
             throw new Error("Failed to find Dependency.");
         }
@@ -39,7 +42,7 @@ export class ConflictResolver implements coc.CodeActionProvider {
                     groupId: gid,
                     artifactId: aid,
                     projectPomPath: coc.Uri.parse(document.uri).fsPath,
-                    fullText: MavenProjectManager.get(document.uri)?.fullText
+                    fullText
                 } as unknown as Dependency
             ]
         };

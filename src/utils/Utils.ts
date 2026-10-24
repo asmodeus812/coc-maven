@@ -15,7 +15,7 @@ import { MavenProject } from "../explorer/model/MavenProject";
 import { getExtensionVersion, getPathToTempFolder, getPathToWorkspaceStorage } from "./contextUtils";
 import { MavenNotFoundError, UserError } from "./errorUtils";
 import { getLRUCommands, ICommandHistoryEntry } from "./historyUtils";
-import { executeInTerminal, getMaven, pluginDescription, rawEffectivePom } from "./mavenUtils";
+import { executeInTerminal, getMaven, pluginDescription, rawDependencyTree, rawEffectivePom } from "./mavenUtils";
 import { effectivePomContentUri, selectProjectIfNecessary } from "./uiUtils";
 
 export class Utils {
@@ -129,16 +129,7 @@ export class Utils {
         await commands.executeCommand("maven.project.resource.open", uri);
     }
 
-    public static async getEffectivePom(pomPathOrMavenProject: string | MavenProject): Promise<string | undefined> {
-        let pomPath: string;
-        if (typeof pomPathOrMavenProject === "object" && pomPathOrMavenProject instanceof MavenProject) {
-            const mavenProject: MavenProject = pomPathOrMavenProject;
-            pomPath = mavenProject.pomPath;
-        } else if (typeof pomPathOrMavenProject === "string") {
-            pomPath = pomPathOrMavenProject;
-        } else {
-            return undefined;
-        }
+    public static async getEffectivePom(pomPath: string): Promise<string | undefined> {
         const task = async () => {
             try {
                 const ret: string | undefined = await rawEffectivePom(pomPath);
@@ -149,6 +140,18 @@ export class Utils {
             }
         };
         return await window.withProgress({ title: "Generating effective pom..." }, task);
+    }
+
+    public static async getDependencyTree(pomPath: string): Promise<string | undefined> {
+        const task = async () => {
+            try {
+                return await rawDependencyTree(pomPath);
+            } catch (error) {
+                window.showErrorMessage(`Unable to resolve dependencies ${(error as Error).message}`);
+                throw error;
+            }
+        };
+        return await window.withProgress({ title: "Computing dependency tree..." }, task);
     }
 
     public static async getPluginDescription(pluginId: string, pomPath: string): Promise<string | undefined> {
