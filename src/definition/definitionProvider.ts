@@ -89,7 +89,7 @@ function getParentDefinitionLinkFromRelativePath(parentNode: Element, document: 
     return undefined;
 }
 
-function getDependencyDefinitionLink(dependencyOrPluginNode: Element, document: coc.TextDocument, position: coc.Position) {
+async function getDependencyDefinitionLink(dependencyOrPluginNode: Element, document: coc.TextDocument, position: coc.Position) {
     const selectionRange: coc.Range = coc.Range.create(
         dependencyOrPluginNode.startIndex !== null ? document.positionAt(dependencyOrPluginNode.startIndex) : position,
         dependencyOrPluginNode.endIndex !== null ? document.positionAt(dependencyOrPluginNode.endIndex) : position
@@ -107,7 +107,7 @@ function getDependencyDefinitionLink(dependencyOrPluginNode: Element, document: 
     const versionHint = getTextFromNode(versionNode?.firstChild);
     if (groupIdHint && artifactIdHint) {
         const mavenProject: MavenProject | undefined = MavenProjectManager.get(document.uri);
-        const version: string | undefined = mavenProject?.getDependencyVersion(groupIdHint, artifactIdHint) || versionHint;
+        const version: string | undefined = (await mavenProject?.getDependencyVersion(groupIdHint, artifactIdHint)) || versionHint;
         if (version !== undefined) {
             const pomPath: string = localPomPath(groupIdHint, artifactIdHint, version);
             if (existsSync(pomPath)) {

@@ -14,7 +14,8 @@ export const MAVEN_DEPENDENCY_CONFLICT = "Maven dependency conflict";
 class DiagnosticProvider {
     private _collection: coc.DiagnosticCollection | undefined;
     private updateNodeForDocumentTimeout: NodeJS.Timer | undefined;
-    public map: Map<coc.Diagnostic, Dependency> = new Map();
+    // the conflict node behind each diagnostic, per pom, replaced with every refresh
+    private readonly conflicts: Map<string, Map<coc.Diagnostic, Dependency>> = new Map();
 
     public initialize(context: coc.ExtensionContext): void {
         const dependencyCollection = coc.languages.createDiagnosticCollection("Dependency");
@@ -24,6 +25,11 @@ class DiagnosticProvider {
             coc.workspace.onDidChangeTextDocument(async (e) => {
                 if (e.textDocument.uri.endsWith("pom.xml")) {
                     await this.debouncedRefresh(coc.Uri.parse(e.document.uri));
+                }
+            }),
+            coc.workspace.onDidOpenTextDocument(async (document) => {
+                if (document.uri.endsWith("pom.xml")) {
+                    await this.refreshDiagnostics(coc.Uri.parse(document.uri));
                 }
             })
         );
@@ -48,6 +54,13 @@ class DiagnosticProvider {
         const diagnostics: coc.Diagnostic[] = [];
         if (Settings.enableConflictDiagnostics() === false) {
             this._collection?.set(uri.toString(), diagnostics);
+            this.conflicts.delete(uri.toString());
+            return;
+        }
+        // only an open pom shows its conflicts, the others get them when they are opened: the conflict ranges come
+        // from the pom document, which for a pom that is not open would load it into a hidden buffer without a
+        // filetype; getDocument returns null, not undefined, for a pom without a buffer
+        if (!coc.workspace.getDocument(uri.toString())) {
             return;
         }
         const project: MavenProject | undefined = MavenProjectManager.get(uri.fsPath);
@@ -55,15 +68,21 @@ class DiagnosticProvider {
             return;
         }
 
-        const conflictNodes: Dependency[] = project.conflictNodes;
+        const conflictNodes: Dependency[] = (await project.getDependencyTree())?.conflictNodes ?? [];
+        const conflicts: Map<coc.Diagnostic, Dependency> = new Map();
         for (const node of conflictNodes) {
             const diagnostic = await this.createDiagnostics(node);
             if (diagnostic) {
                 diagnostics.push(diagnostic);
-                this.map.set(diagnostic, node);
+                conflicts.set(diagnostic, node);
             }
         }
+        this.conflicts.set(uri.toString(), conflicts);
         this._collection?.set(uri.toString(), diagnostics);
+    }
+
+    public getConflictNode(uri: string, diagnostic: coc.Diagnostic): Dependency | undefined {
+        return this.conflicts.get(uri)?.get(diagnostic);
     }
 
     public async createDiagnostics(node: Dependency): Promise<coc.Diagnostic | undefined> {

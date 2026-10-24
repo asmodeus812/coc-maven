@@ -10,24 +10,7 @@ import { MavenProjectManager } from "../project/MavenProjectManager";
 import { getCurrentNode, getEnclosingTag, getNodePath, getTextFromNode, XmlTagName } from "../utils/lexerUtils";
 import { isXmlExtensionEnabled } from "../utils/extensionUtils";
 
-// a hover waits this long for an effective pom being calculated, the calculation itself goes on in the background
-const EFFECTIVE_POM_WAIT_MS = 1000;
-
-async function waitForEffectivePom(mavenProject: MavenProject, token: coc.CancellationToken): Promise<void> {
-    let timer: NodeJS.Timer | undefined;
-    let cancellation: coc.Disposable | undefined;
-    const stopWaiting = new Promise<void>((resolve) => {
-        timer = setTimeout(resolve, EFFECTIVE_POM_WAIT_MS);
-        cancellation = token.onCancellationRequested(() => resolve());
-    });
-    try {
-        // a failed calculation leaves the hover empty
-        await Promise.race([mavenProject.getEffectivePom().catch(() => undefined), stopWaiting]);
-    } finally {
-        clearTimeout(timer);
-        cancellation?.dispose();
-    }
-}
+const HOVER_WAIT_CANCEL_MS = 1000;
 
 export class HoverProvider implements coc.HoverProvider {
     public async provideHover(
@@ -74,14 +57,21 @@ export class HoverProvider implements coc.HoverProvider {
                     if (!mavenProject) {
                         return undefined;
                     }
-                    if (!mavenProject.hasEffectivePom) {
-                        // the effective versions come from the effective pom
-                        await waitForEffectivePom(mavenProject, token);
-                    }
+                    // a hover waits a second at most, or until it is cancelled, the calculation goes on in the background
+                    let timer: NodeJS.Timer | undefined;
+                    let cancellation: coc.Disposable | undefined;
+                    const effectiveVersion: string | undefined = await Promise.race([
+                        mavenProject.getDependencyVersion(groupIdHint, artifactIdHint),
+                        new Promise<undefined>((resolve) => {
+                            timer = setTimeout(() => resolve(undefined), HOVER_WAIT_CANCEL_MS);
+                            cancellation = token.onCancellationRequested(() => resolve(undefined));
+                        })
+                    ]);
+                    clearTimeout(timer);
+                    cancellation?.dispose();
                     if (token.isCancellationRequested) {
                         return undefined;
                     }
-                    const effectiveVersion: string | undefined = mavenProject.getDependencyVersion(groupIdHint, artifactIdHint);
                     if (effectiveVersion) {
                         return {
                             contents: {

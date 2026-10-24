@@ -41,7 +41,7 @@ export async function setDependencyVersionHandler(selectedItem: Dependency): Pro
 
     const gid: string = selectedItem.groupId;
     const aid: string = selectedItem.artifactId;
-    const versions: string[] = getAllVersionsInTree(pomPath, gid, aid);
+    const versions: string[] = await getAllVersionsInTree(pomPath, gid, aid);
     const OPTION_SEARCH_MAVEN_CENTRAL = "Search Maven Central Repository...";
     versions.push(OPTION_SEARCH_MAVEN_CENTRAL);
 
@@ -207,12 +207,12 @@ async function insertDependencyManagement(
     await coc.workspace.applyEdit(edit);
 }
 
-function getAllVersionsInTree(pomPath: string, gid: string, aid: string): string[] {
+async function getAllVersionsInTree(pomPath: string, gid: string, aid: string): Promise<string[]> {
     const project: MavenProject | undefined = MavenProjectManager.get(pomPath);
     if (project === undefined) {
         throw new Error("Failed to resolve maven projects.");
     }
-    const fullText: string = project.fullText as string;
+    const fullText: string = (await project.getDependencyTree())?.conflictText as string;
     const re = new RegExp(`${gid}:${aid}:[\\w.-]+`, "gm");
     const artifacts: string[] | null = RegExp(re).exec(fullText);
     let versions: string[] = [];

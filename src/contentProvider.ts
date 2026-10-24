@@ -4,9 +4,9 @@
 import * as coc from "coc.nvim";
 import * as fse from "fs-extra";
 import * as path from "path";
+import { IDependencyTree } from "./explorer/model/IDependencyTree";
 import { IEffectivePom } from "./explorer/model/IEffectivePom";
 import { MavenProject } from "./explorer/model/MavenProject";
-import { getDependencyTree } from "./handlers/dependency/showDependenciesHandler";
 import { MavenProjectManager } from "./project/MavenProjectManager";
 import { UserError } from "./utils/errorUtils";
 import { Utils } from "./utils/Utils";
@@ -46,8 +46,9 @@ class MavenContentProvider implements coc.TextDocumentContentProvider {
             if (previous === undefined) {
                 throw error;
             }
-            // refreshing an already open document failed (e.g. the pom is being edited and is not valid yet), keep the
-            // previous content instead of failing, coc does not handle rejected refreshes
+            // refreshing an already open document failed, keep the previous content instead of failing, coc does not
+            // handle rejected refreshes; the outputs of a project keep their last valid state themselves, this covers
+            // poms outside the projects and invalid document paths
             coc.window.showWarningMessage(`Unable to refresh ${uri.authority}, keeping previous content: ${(error as Error).message}`);
             return previous;
         }
@@ -64,13 +65,20 @@ class MavenContentProvider implements coc.TextDocumentContentProvider {
             await validatePomPath(pomPath);
         }
         switch (uri.authority) {
-            case "dependencies":
-                return getDependencyTree(pomPath);
+            case "dependencies": {
+                const project: MavenProject | undefined = MavenProjectManager.get(pomPath);
+                if (project) {
+                    const dependencyTree: IDependencyTree | undefined = await project.getDependencyTree();
+                    return dependencyTree?.text;
+                } else {
+                    return Utils.getDependencyTree(pomPath);
+                }
+            }
             case "effective-pom": {
                 const project: MavenProject | undefined = MavenProjectManager.get(pomPath);
                 if (project) {
                     const effectivePom: IEffectivePom | undefined = await project.getEffectivePom();
-                    return effectivePom?.ePomString;
+                    return effectivePom?.text;
                 } else {
                     return Utils.getEffectivePom(pomPath);
                 }

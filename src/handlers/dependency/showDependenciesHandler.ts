@@ -4,9 +4,7 @@
 import * as path from "path";
 import * as coc from "coc.nvim";
 import * as fse from "fs-extra";
-import { MavenProject } from "../../explorer/model/MavenProject";
 import { UserError } from "../../utils/errorUtils";
-import { rawDependencyTree } from "../../utils/mavenUtils";
 import { dependenciesContentUri, selectProjectIfNecessary } from "../../utils/uiUtils";
 
 export async function showDependenciesHandler(options: any): Promise<void> {
@@ -30,26 +28,4 @@ export async function showDependenciesHandler(options: any): Promise<void> {
 
     const uri = dependenciesContentUri(pomPath);
     await coc.commands.executeCommand("maven.project.resource.open", uri);
-}
-
-export async function getDependencyTree(pomPathOrMavenProject: string | MavenProject): Promise<string | undefined> {
-    let pomPath: string;
-    if (typeof pomPathOrMavenProject === "object" && pomPathOrMavenProject instanceof MavenProject) {
-        const mavenProject: MavenProject = pomPathOrMavenProject;
-        pomPath = mavenProject.pomPath;
-    } else if (typeof pomPathOrMavenProject === "string") {
-        pomPath = pomPathOrMavenProject;
-    } else {
-        return undefined;
-    }
-
-    const task = async () => {
-        try {
-            return await rawDependencyTree(pomPath);
-        } catch (error) {
-            coc.window.showErrorMessage(`Unable to resolve dependencies ${(error as Error).message}`);
-            throw error;
-        }
-    };
-    return await coc.window.withProgress({ title: "Computing dependency tree..." }, task);
 }

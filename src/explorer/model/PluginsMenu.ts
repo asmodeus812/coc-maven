@@ -15,8 +15,7 @@ export class PluginsMenu extends ProjectMenu implements ITreeItem {
     }
 
     public async getChildren(): Promise<MavenPlugin[]> {
-        await this.project.getEffectivePom();
-        return this.project.plugins;
+        return this.project.getPlugins();
     }
 
     public getTreeItem(): coc.TreeItem | coc.Thenable<coc.TreeItem> {

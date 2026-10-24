@@ -3,6 +3,7 @@
 
 "use strict";
 import * as coc from "coc.nvim";
+import * as path from "path";
 import { Progress, Uri, nvim } from "coc.nvim";
 import { diagnosticProvider } from "./DiagnosticProvider";
 import { Settings } from "./Settings";
@@ -54,7 +55,7 @@ export async function doActivate(context: coc.ExtensionContext): Promise<void> {
     let alternateWindowId: number | undefined;
     pluginInfoProvider.initialize(context);
     // register tree view
-    await MavenProjectManager.loadProjects();
+    (await MavenProjectManager.loadProjects()).forEach(prefetchProjectOutputs);
     const mavenExplorerProvider: MavenExplorerProvider = MavenExplorerProvider.getInstance();
     const mavenExplorerView = coc.window.createTreeView("MAVEN PROJECTS", {
         bufhidden: "hide",
@@ -259,7 +260,7 @@ export async function doActivate(context: coc.ExtensionContext): Promise<void> {
                 await mavenExplorerProvider.removeWorkspaceFolder(removedWorkspaceFolder);
             }
             for (const addedWorkspaceFolder of e.added) {
-                await mavenExplorerProvider.addWorkspaceFolder(addedWorkspaceFolder);
+                (await mavenExplorerProvider.addWorkspaceFolder(addedWorkspaceFolder)).forEach(prefetchProjectOutputs);
             }
         })
     );
@@ -277,28 +278,85 @@ export async function doActivate(context: coc.ExtensionContext): Promise<void> {
     await initMavenXsd();
 }
 
+/**
+ * Loads the chosen maven outputs of a project in the background, one task per pom. An open document of a loaded output
+ * reloads, a loaded dependency tree also refreshes the conflict diagnostics of the pom.
+ */
+function loadProjectOutputs(project: MavenProject, outputs: { effectivePom: boolean; dependencyTree: boolean }): void {
+    if (outputs.effectivePom || outputs.dependencyTree) {
+        taskExecutor.execute(project.pomPath, async () => {
+            if (outputs.effectivePom) {
+                await project.getEffectivePom();
+                contentProvider.invalidate(effectivePomContentUri(project.pomPath));
+            }
+            if (outputs.dependencyTree) {
+                await project.getDependencyTree();
+                contentProvider.invalidate(dependenciesContentUri(project.pomPath));
+                await diagnosticProvider.refreshDiagnostics(coc.Uri.file(project.pomPath));
+            }
+            MavenExplorerProvider.getInstance().refresh(project);
+        });
+    }
+}
+
+// a loaded project computes its outputs ahead of the first read; the effective pom follows its own setting, the
+// dependency tree is only needed for the conflict diagnostics
+function prefetchProjectOutputs(project: MavenProject): void {
+    loadProjectOutputs(project, {
+        effectivePom: Settings.Pomfile.prefetchEffectivePom(project.pomPath),
+        dependencyTree: Settings.enableConflictDiagnostics()
+    });
+}
+
 async function refreshChangedPom(pomPath: string): Promise<void> {
     const project: MavenProject | undefined = MavenProjectManager.get(pomPath);
     if (project) {
-        // notify dependencies/effectivePOM to update
-        contentProvider.invalidate(effectivePomContentUri(project.pomPath));
-        contentProvider.invalidate(dependenciesContentUri(project.pomPath));
+        // the pom changed on disk, both outputs of it and of the modules that inherit from it are outdated now
+        const outdated: MavenProject[] = [project, ...inheritingProjects(project.pomPath)];
+        // the settings decide which outputs of the saved pom load right away, the others, and those of the inheriting
+        // modules, load on their next read, which for an open document of theirs is the reload that starts here
+        const eager = { effectivePom: Settings.Pomfile.autoUpdateEffectivePOM(), dependencyTree: Settings.enableConflictDiagnostics() };
+        for (const outdatedProject of outdated) {
+            outdatedProject.invalidateEffectivePom();
+            outdatedProject.invalidateDependencyTree();
+            if (!eager.effectivePom || outdatedProject !== project) {
+                contentProvider.invalidate(effectivePomContentUri(outdatedProject.pomPath));
+            }
+            if (!eager.dependencyTree || outdatedProject !== project) {
+                contentProvider.invalidate(dependenciesContentUri(outdatedProject.pomPath));
+            }
+        }
 
         await project.refresh();
-        if (Settings.Pomfile.autoUpdateEffectivePOM()) {
-            taskExecutor.execute(project.pomPath, async () => {
-                await project.refreshEffectivePom();
-                MavenExplorerProvider.getInstance().refresh(project);
-            });
-        }
+        loadProjectOutputs(project, eager);
     }
+}
+
+// the projects whose <parent> chain leads to the pom, their effective pom and dependency tree include it
+function inheritingProjects(pomPath: string, seen: Set<string> = new Set([path.resolve(pomPath)])): MavenProject[] {
+    const children: MavenProject[] = MavenProjectManager.projects.filter((candidate) => {
+        const parentPomPath: string | undefined = candidate.parentPomPath;
+        return parentPomPath !== undefined && path.resolve(parentPomPath) === path.resolve(pomPath) && !seen.has(path.resolve(candidate.pomPath));
+    });
+    children.forEach((child) => seen.add(path.resolve(child.pomPath)));
+    return children.flatMap((child) => [child, ...inheritingProjects(child.pomPath, seen)]);
 }
 
 function registerPomFileWatcher(context: coc.ExtensionContext): void {
     const watcher: coc.FileSystemWatcher = coc.workspace.createFileSystemWatcher(Settings.Pomfile.globPattern());
     // a burst of changes to one pom (autosave, :wa, a formatter) refreshes it once, after it stayed unchanged for a while
     const pendingRefreshes = new Map<string, NodeJS.Timer>();
-    watcher.onDidCreate((e: Uri) => MavenExplorerProvider.getInstance().addProject(e.fsPath), null, context.subscriptions);
+    watcher.onDidCreate(
+        (e: Uri) => {
+            MavenExplorerProvider.getInstance().addProject(e.fsPath);
+            const project: MavenProject | undefined = MavenProjectManager.get(e.fsPath);
+            if (project) {
+                prefetchProjectOutputs(project);
+            }
+        },
+        null,
+        context.subscriptions
+    );
     watcher.onDidChange(
         (e: Uri) => {
             clearTimeout(pendingRefreshes.get(e.fsPath));

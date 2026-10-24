@@ -3,7 +3,6 @@
 
 import * as coc from "coc.nvim";
 import { diagnosticProvider } from "../../DiagnosticProvider";
-import { parseRawDependencyDataHandler } from "../../handlers/parseRawDependencyDataHandler";
 import { MavenExplorerProvider } from "../MavenExplorerProvider";
 import { Dependency } from "./Dependency";
 import { HintNode } from "./HintNode";
@@ -22,13 +21,15 @@ export class DependenciesMenu extends ProjectMenu implements ITreeItem {
     }
 
     public async getChildren(): Promise<Dependency[] | HintNode[]> {
-        const treeNodes = await parseRawDependencyDataHandler(this.project);
+        const tree = await coc.window.withProgress({ title: "Computing dependency tree..." }, async () => this.project.getDependencyTree());
         await diagnosticProvider.refreshDiagnostics(coc.Uri.file(this.project.pomPath));
-        if (treeNodes.length === 0) {
-            const hintNodes: HintNode[] = [new HintNode("No dependencies")];
-            return Promise.resolve(hintNodes);
+        if (tree === undefined) {
+            // the failed calculation was reported already
+            return [new HintNode("Dependency tree not available")];
+        } else if (tree.treeNodes.length === 0) {
+            return [new HintNode("No dependencies")];
         } else {
-            return Promise.resolve(treeNodes);
+            return tree.treeNodes;
         }
     }
 

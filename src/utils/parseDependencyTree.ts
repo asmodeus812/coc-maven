@@ -4,19 +4,14 @@
 import * as path from "path";
 import * as coc from "coc.nvim";
 import { Dependency } from "../explorer/model/Dependency";
-import { MavenProject } from "../explorer/model/MavenProject";
+import { IDependencyTree } from "../explorer/model/IDependencyTree";
 import { IOmittedStatus } from "../explorer/model/OmittedStatus";
-import { getDependencyTree } from "./dependency/showDependenciesHandler";
 
 const DUPLICATE_INDICATOR = "omitted for duplicate";
 const CONFLICT_INDICATOR = "omitted for conflict";
 
-export async function parseRawDependencyDataHandler(project: MavenProject): Promise<Dependency[]> {
-    const dependencyTree: string | undefined = await getDependencyTree(project.pomPath);
-    if (dependencyTree === undefined) {
-        throw new Error("Failed to generate dependency tree.");
-    }
-    let treeContent: string = dependencyTree.slice(0, -1); // delete last "\n"
+export async function parseDependencyTree(pomPath: string, text: string): Promise<IDependencyTree> {
+    let treeContent: string = text.slice(0, -1); // delete last "\n"
     treeContent = treeContent.replace(/\|/g, " ");
     treeContent = treeContent.replace(/\\/g, "+");
     treeContent = treeContent.replace(/\n/g, "\r\n");
@@ -25,15 +20,12 @@ export async function parseRawDependencyDataHandler(project: MavenProject): Prom
     // output = (groupId:artifactId:)(version2)(:scope (omitted for conflict) with (version1))
     const re = /([\w.]+:[\w.-]+:)([\w.-]+)(:[\w/.(\s]+):\s([\w.-]+)\)/gm;
     treeContent = treeContent.replace(re, "$1$4$3 with $2)");
-    project.fullText = treeContent;
 
     const indent = "   "; // three spaces
     const eol = "\r\n";
     const prefix = "+- ";
-    const [treeNodes, conflictNodes] = await parseTreeNodes(treeContent, eol, indent, prefix, project.pomPath);
-    project.conflictNodes = conflictNodes;
-    project.dependencyNodes = treeNodes;
-    return treeNodes;
+    const [treeNodes, conflictNodes] = await parseTreeNodes(treeContent, eol, indent, prefix, pomPath);
+    return { text, conflictText: treeContent, treeNodes, conflictNodes };
 }
 
 async function parseTreeNodes(
