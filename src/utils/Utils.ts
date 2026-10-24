@@ -108,7 +108,7 @@ export class Utils {
         let pomPath: string | undefined;
         if (typeof param === "string") {
             pomPath = param;
-        } else if (typeof param.pomPath === "string") {
+        } else if (typeof param?.pomPath === "string") {
             pomPath = param.pomPath;
         } else if (typeof param === "object" && param instanceof Uri) {
             pomPath = param.fsPath;
