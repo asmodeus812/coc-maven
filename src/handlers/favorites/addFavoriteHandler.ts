@@ -13,4 +13,5 @@ export async function addFavoriteHandler() {
     }
 
     Settings.storeFavorite({ command, debug: false });
+    coc.window.showInformationMessage(`Added favorite: ${command}`);
 }

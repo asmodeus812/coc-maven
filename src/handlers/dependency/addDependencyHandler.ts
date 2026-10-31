@@ -40,17 +40,19 @@ export async function addDependencyHandler(options?: any): Promise<void> {
 
     const selectedDoc: IArtifactMetadata | undefined = await coc.window
         .showQuickPick<coc.QuickPickItem & { value: IArtifactMetadata }>(
-            getArtifacts(keywordString.trim().split(/[-,. :]/)).then(
-                (artifacts) =>
-                    artifacts
-                        .map((artifact) => ({
-                            value: artifact,
-                            label: `${artifact.a}`,
-                            description: artifact.g,
-                            usage: getUsage(`${artifact.g}:${artifact.a}`) // load usage data
-                        }))
-                        .sort((a, b) => b.usage - a.usage) // from largest to smallest
-            ),
+            getArtifacts(keywordString.trim().split(/[-,. :]/)).then((artifacts) => {
+                if (artifacts.length === 0) {
+                    coc.window.showWarningMessage(`No dependency found for ${keywordString.trim()}`);
+                }
+                return artifacts
+                    .map((artifact) => ({
+                        value: artifact,
+                        label: `${artifact.a}`,
+                        description: artifact.g,
+                        usage: getUsage(`${artifact.g}:${artifact.a}`) // load usage data
+                    }))
+                    .sort((a, b) => b.usage - a.usage); // from largest to smallest
+            }),
             {
                 placeHolder: "Select a dependency...",
                 matchOnDescription: true

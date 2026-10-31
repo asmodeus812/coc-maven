@@ -161,6 +161,7 @@ async function executeInTerminalHandler(metadata: IProjectCreationMetadata): Pro
         const mvnPath: string | undefined = (await getMaven()) ?? getEmbeddedMavenWrapper();
         if (mvnPath === undefined) {
             p.report({ message: "Failed locating maven binary" });
+            coc.window.showErrorMessage("Unable to generate archetype project: maven binary not found");
             return false;
         }
         p.report({ message: "Generating project structure..." });
@@ -177,8 +178,10 @@ async function executeInTerminalHandler(metadata: IProjectCreationMetadata): Pro
         }
     };
 
-    await coc.window.withProgress({ title: "Creating maven project..." }, task);
-    await promptOnDidProjectCreated(archetypeArtifactId, targetFolder);
+    const generated = await coc.window.withProgress({ title: "Creating maven project..." }, task);
+    if (generated !== false) {
+        await promptOnDidProjectCreated(archetypeArtifactId, targetFolder);
+    }
 }
 
 async function createBasicMavenProject(metadata: IProjectCreationMetadata): Promise<void> {

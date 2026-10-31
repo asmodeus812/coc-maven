@@ -104,17 +104,29 @@ export async function doActivate(context: coc.ExtensionContext): Promise<void> {
             await mavenExplorerView?.show("botright 40vs");
         }
     });
-    registerCommand(context, "maven.explorer.flat", () => Settings.changeToFlatView());
-    registerCommand(context, "maven.explorer.hierarchical", () => Settings.changeToHierarchicalView());
+    const noticeIfExplorerClosed = (text: string): void => {
+        if (!mavenExplorerView?.visible) {
+            coc.window.showInformationMessage(text);
+        }
+    };
+    registerCommand(context, "maven.explorer.flat", () => {
+        Settings.changeToFlatView();
+        noticeIfExplorerClosed("Maven explorer is not open, the flat view applies when it opens");
+    });
+    registerCommand(context, "maven.explorer.hierarchical", () => {
+        Settings.changeToHierarchicalView();
+        noticeIfExplorerClosed("Maven explorer is not open, the hierarchical view applies when it opens");
+    });
     registerCommand(context, "maven.explorer.refresh", async () => {
         mavenExplorerProvider.refresh();
+        noticeIfExplorerClosed("Maven explorer is not open, nothing to refresh");
     });
 
     registerCommand(context, "maven.project.effectivePom", async (data) => {
-        Utils.showEffectivePom(data);
+        await reportFailure("open the effective pom", data, () => Utils.showEffectivePom(data));
     });
     registerCommand(context, "maven.project.addDependency", async (data) => {
-        addDependencyHandler(data);
+        await reportFailure("add a dependency", data, () => addDependencyHandler(data));
     });
     registerCommand(
         context,
@@ -125,16 +137,22 @@ export async function doActivate(context: coc.ExtensionContext): Promise<void> {
         true
     );
     registerCommand(context, "maven.project.showDependencies", async (data: any) => {
-        showDependenciesHandler(data);
+        await reportFailure("show the dependencies", data, () => showDependenciesHandler(data));
     });
-    registerCommand(context, "maven.project.configuration.update", () => {
+    registerCommand(context, "maven.project.configuration.update", async () => {
         mavenExplorerProvider.refresh();
         if (isJavaExtEnabled()) {
             // Reload All Maven Projects in JDTLS, impl in upstream
-            coc.commands.executeCommand(
-                "java.projectConfiguration.update",
-                MavenProjectManager.projects.map((project: any) => Uri.file(project.pomPath))
-            );
+            try {
+                await coc.commands.executeCommand(
+                    "java.projectConfiguration.update",
+                    MavenProjectManager.projects.map((project: any) => Uri.file(project.pomPath))
+                );
+            } catch (error) {
+                coc.window.showErrorMessage(`Unable to update the project configuration ${(error as Error).message}`);
+            }
+        } else {
+            coc.window.showWarningMessage("The Java language server is not enabled, projects were not reloaded");
         }
     });
     registerCommand(
@@ -149,8 +167,16 @@ export async function doActivate(context: coc.ExtensionContext): Promise<void> {
     registerCommand(context, "maven.goal.custom", async (node?: string | MavenProject, goal?: string, env?: { [key: string]: string }) => {
         return await Utils.executeCustomGoal(await resolveProject(node), goal, env);
     });
-    registerCommand(context, "maven.goal.execute", async (node?: string | MavenProject) => await Utils.executeMavenCommand(await resolveProject(node)));
-    registerCommand(context, "maven.favorites", async (node?: string | MavenProject) => await runFavoriteCommandsHandler(await resolveProject(node)));
+    registerCommand(
+        context,
+        "maven.goal.execute",
+        async (node?: string | MavenProject) => await Utils.executeMavenCommand(await resolveProject(node))
+    );
+    registerCommand(
+        context,
+        "maven.favorites",
+        async (node?: string | MavenProject) => await runFavoriteCommandsHandler(await resolveProject(node))
+    );
     registerCommand(context, "maven.lifecycle.execute", executeLifecyclePhaseHandler, true);
     DEFAULT_MAVEN_LIFECYCLES.forEach((goal: string) => {
         registerCommand(context, `maven.goal.${goal}`, async (node?: string | MavenProject) => {
@@ -237,7 +263,12 @@ export async function doActivate(context: coc.ExtensionContext): Promise<void> {
     registerCommand(context, "maven.explorer.excludeDependency", excludeDependencyHandler, true);
     registerCommand(context, "maven.explorer.goToDefinition", jumpToDefinitionHandler, true);
     registerCommand(context, "maven.explorer.goToEffective", Utils.showEffectivePom, true);
-    registerCommand(context, "maven.explorer.dependency.goToEffective", (node?: Dependency) => goToEffectiveHandler(mavenExplorerView, node), true);
+    registerCommand(
+        context,
+        "maven.explorer.dependency.goToEffective",
+        (node?: Dependency) => goToEffectiveHandler(mavenExplorerView, node),
+        true
+    );
     // completion items carry this command for telemetry upstream, there is nothing to report here
     registerCommand(context, COMMAND_COMPLETION_ITEM_SELECTED, () => undefined, true);
     registerCommand(context, "maven.new.module", ArchetypeModule.createMavenModule);
@@ -351,7 +382,11 @@ async function refreshChangedPom(pomPath: string): Promise<void> {
 function inheritingProjects(pomPath: string, seen: Set<string> = new Set([path.resolve(pomPath)])): MavenProject[] {
     const children: MavenProject[] = MavenProjectManager.projects.filter((candidate) => {
         const parentPomPath: string | undefined = candidate.parentPomPath;
-        return parentPomPath !== undefined && path.resolve(parentPomPath) === path.resolve(pomPath) && !seen.has(path.resolve(candidate.pomPath));
+        return (
+            parentPomPath !== undefined &&
+            path.resolve(parentPomPath) === path.resolve(pomPath) &&
+            !seen.has(path.resolve(candidate.pomPath))
+        );
     });
     children.forEach((child) => seen.add(path.resolve(child.pomPath)));
     return children.flatMap((child) => [child, ...inheritingProjects(child.pomPath, seen)]);
@@ -454,10 +489,30 @@ async function resolveProject(node?: string | MavenProject): Promise<MavenProjec
         if (!project) {
             coc.window.showErrorMessage(`No maven project found for pom file ${node}`);
         }
-    } else {
+    } else if (hasProjects()) {
         project = await selectProjectIfNecessary();
     }
     return project;
+}
+
+function hasProjects(): boolean {
+    const found: boolean = (MavenProjectManager.projects?.length ?? 0) > 0;
+    if (!found) {
+        coc.window.showWarningMessage("No Maven project in the workspace, open a folder with a pom.xml");
+    }
+    return found;
+}
+
+/** Run a handler to completion and turn its failure into an error message, a rejection of a command is only logged. */
+async function reportFailure(action: string, data: unknown, run: () => Promise<void>): Promise<void> {
+    try {
+        // without a target the handlers pick a project, which needs one
+        if ((data !== undefined && data !== null) || hasProjects()) {
+            await run();
+        }
+    } catch (error) {
+        coc.window.showErrorMessage(`Unable to ${action} ${(error as Error).message}`);
+    }
 }
 
 async function mavenHistoryHandler(item: MavenProject | undefined): Promise<void> {
@@ -473,6 +528,7 @@ async function updateArchetypeCatalogHandler(): Promise<void> {
         try {
             await ArchetypeModule.updateArchetypeCatalog();
             p.report({ message: "Finished updating architypes." });
+            coc.window.showInformationMessage("Archetype catalog updated");
         } catch (error) {
             coc.window.showErrorMessage(`Unable to update catalog ${(error as Error).message}`);
             throw error;

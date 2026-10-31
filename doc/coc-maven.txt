@@ -395,8 +395,9 @@ command as strings. To pass other values, such as a table, use
 Many commands take a project as their first argument: a path to a `pom.xml`.
 Without an argument they use the only project of the workspace, or ask with
 the prompt "Select a Maven project ..." when there are several. A path that no
-known project has fails with "No maven project found for pom file {path}". In
-this list, {project} stands for that argument.
+known project has fails with "No maven project found for pom file {path}". A
+workspace without any project gives the warning "No Maven project in the
+workspace, open a folder with a pom.xml". In this list, {project} stands for that argument.
 
 ------------------------------------------------------------------------------
 EXPLORER COMMANDS                                *coc-maven-commands-explorer*
@@ -407,14 +408,16 @@ Shows the explorer window, see |coc-maven-explorer|.
 
 maven.explorer.refresh              *coc-maven-command-maven.explorer.refresh*
 
-Reloads the tree of the explorer.
+Reloads the tree of the explorer. While the explorer is not open it only says
+"Maven explorer is not open, nothing to refresh"; it never opens the window.
 
 maven.explorer.flat                    *coc-maven-command-maven.explorer.flat*
 maven.explorer.hierarchical    *coc-maven-command-maven.explorer.hierarchical*
 
 The two commands switch the explorer to the flat or to the hierarchical
 layout, see |coc-maven-explorer-nodes|. The choice is written to `maven.view`
-in your user `coc-settings.json`, so it holds for all projects.
+in your user `coc-settings.json`, so it holds for all projects. While the
+explorer is not open, a message says the layout applies when it opens.
 
 ------------------------------------------------------------------------------
 GOAL COMMANDS                                       *coc-maven-commands-goals*
@@ -462,7 +465,7 @@ maven.project.addFavorite        *coc-maven-command-maven.project.addFavorite*
 
 Asks "Add favorite" for a Maven command line and adds it, without an alias, to
 the favorites of the current workspace folder. Cancelling or an empty answer
-adds nothing.
+adds nothing. After adding it says "Added favorite: {command}".
 
 maven.history                                *coc-maven-command-maven.history*
 
@@ -480,7 +483,7 @@ maven.project.effectivePom {project}?
 Opens the effective pom of the project, see |coc-maven-documents|. Without
 {project} it asks for the project, as described in |coc-maven-commands|.
 While Maven computes it, the progress message reads "Generating effective
-pom...".
+pom...". A failure is reported as "Unable to open the effective pom {reason}".
 
                             *coc-maven-command-maven.project.showDependencies*
 maven.project.showDependencies {project}?
@@ -495,7 +498,8 @@ maven.project.addDependency {project}?
 Asks "Search Maven Central Repository" for keywords and lists at most 50
 matching artifacts, the ones used most first: "Select a dependency...". The
 list shows the artifactId and the groupId; typing matches both. Keywords
-shorter than three characters are ignored, and an empty search does nothing.
+shorter than three characters are ignored; a search without matches warns
+"No dependency found for {keywords}", and an empty search does nothing.
 The choice opens the pom and inserts a `<dependency>` at the start of
 `<dependencies>`, or creates `<dependencies>` at the end of `<project>`. A
 missing pom fails with "Specified POM {path} does not exist.".
@@ -509,7 +513,9 @@ already shows it.
 maven.project.configuration.update
 
 Refreshes the explorer and, when coc-java is installed, makes coc-java reload
-the configuration of all Maven projects.
+the configuration of all Maven projects. Without coc-java it warns that the
+projects were not reloaded, and a rejected request is reported as "Unable to
+update the project configuration {reason}".
 
 ------------------------------------------------------------------------------
 NEW PROJECT COMMANDS                            *coc-maven-commands-archetype*
@@ -521,6 +527,8 @@ Creates a project, see |coc-maven-archetype-project|. {answers} is an optional
 table. The keys `groupId`, `artifactId`, `targetFolder`, `archetypeGroupId`,
 `archetypeArtifactId` and `archetypeVersion` skip the steps that they answer;
 with all three archetype keys the archetype steps are skipped.
+Without a Maven binary it fails with "Unable to generate archetype project:
+maven binary not found".
 
 maven.new.module {answers}?               *coc-maven-command-maven.new.module*
 
@@ -532,7 +540,7 @@ maven.archetype.update              *coc-maven-command-maven.archetype.update*
 
 Downloads the latest archetype catalog from Maven Central for the list of
 |coc-maven-archetype-project|. The download can take a while; the progress
-message reads "Updating archetype catalog..." and a failure shows "Unable to
-update catalog {reason}".
+message reads "Updating archetype catalog...", success shows "Archetype
+catalog updated" and a failure shows "Unable to update catalog {reason}".
 
  vim:tw=78:ts=8:sw=4:sts=4:et:ft=help:norl:
