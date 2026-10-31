@@ -95,6 +95,21 @@ export class MavenProject implements ITreeItem {
         return moduleNames ?? [];
     }
 
+    // the modules maven builds with the project, those of its profiles too, maven 4 names them subprojects
+    public get buildModules(): string[] {
+        const lists: any[] = [_.get(this._pom, "project"), ...(_.get(this._pom, "project.profiles[0].profile") ?? [])];
+        const names: string[] = lists.flatMap((list) => [
+            ...(_.get(list, "modules[0].module") ?? []),
+            ...(_.get(list, "subprojects[0].subproject") ?? [])
+        ]);
+        return names.map((name) => this.modulePomPath(name));
+    }
+
+    // the pom parsed at least once, a pom that never parsed is not a project maven can load
+    public get parsed(): boolean {
+        return this._pom !== undefined;
+    }
+
     public async getPlugins(): Promise<MavenPlugin[]> {
         return this._convertXmlPlugin(_.get(await this.getEffectiveProject(), "build[0].plugins[0].plugin"));
     }
@@ -113,14 +128,17 @@ export class MavenProject implements ITreeItem {
      * @return list of absolute path of modules pom.xml.
      */
     public get modules(): string[] {
-        return this.moduleNames.map((moduleName) => {
-            const relative: string = path.join(path.dirname(this.pomPath), moduleName);
-            if (fs.existsSync(relative) && fs.statSync(relative).isFile()) {
-                return relative;
-            } else {
-                return path.join(relative, "pom.xml");
-            }
-        });
+        return this.moduleNames.map((moduleName) => this.modulePomPath(moduleName));
+    }
+
+    // a module names its folder or its pom file
+    private modulePomPath(moduleName: string): string {
+        const relative: string = path.join(path.dirname(this.pomPath), moduleName);
+        if (fs.existsSync(relative) && fs.statSync(relative).isFile()) {
+            return relative;
+        } else {
+            return path.join(relative, "pom.xml");
+        }
     }
 
     /**

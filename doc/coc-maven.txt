@@ -276,9 +276,13 @@ longer, because Maven downloads the plugin that draws it.
 coc-maven also computes both in the background: the effective pom when the
 projects load and after a `pom.xml` changes on disk, the dependency tree at
 the same moments while conflict diagnostics are on. The `maven.pomfile`
-settings in the README turn this off. A result stays valid, also after a
-restart of Neovim, until you save the pom or one of the parent poms it
-inherits from; the next use then runs Maven again.
+settings in the README turn this off. Only the poms of a build compute in the
+background: a root pom, one with no other pom in a folder above it, and the
+modules the poms of a build list in `<modules>`, `<subprojects>` or a profile.
+Any other `pom.xml` inside a project, such as the test inputs or samples of
+that project, shows in the explorer and computes on its first use. A result
+stays valid, also after a restart of Neovim, until you save the pom or one of
+the parent poms it inherits from; the next use then runs Maven again.
 
 When Maven fails, for example because the saved pom is broken, the buffer, the
 hover and the explorer keep the last valid state and coc-maven warns once: >

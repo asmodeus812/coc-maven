@@ -166,7 +166,7 @@ favorites:
 | `maven.excludedFolders` | array of string | `["**/.*", "**/node_modules", "**/target", "**/bin", "**/archetype-resources"]` | Glob patterns of folders that the search for poms skips. |
 | `maven.pomfile.globPattern` | string | `"**/pom.xml"` | The glob that finds the poms of the workspace and that the file watcher observes. |
 | `maven.pomfile.autoUpdateEffectivePOM` | boolean | `true` | Recompute the effective pom of a project in the background after its `pom.xml` changes on disk. |
-| `maven.pomfile.prefetchEffectivePom` | boolean | `true` | Compute the effective pom of every project in the background when the projects are loaded, so hover and the explorer have it ready. Can be turned off per project. |
+| `maven.pomfile.prefetchEffectivePom` | boolean | `true` | Compute the effective pom of every project of a build in the background when the projects are loaded, so hover and the explorer have it ready: the root poms and the modules they list. Any other `pom.xml` inside a project, such as test inputs or samples, computes on first use. Can be turned off per project. |
 
 `maven.explorer.projectName` takes one of `${project.name}`,
 `${project.artifactId}`, `${project.artifactId}-${project.version}`,

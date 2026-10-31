@@ -31,8 +31,8 @@ export class MavenExplorerProvider implements TreeDataProvider<ITreeItem> {
         MavenProjectManager.update(...items);
     }
 
-    public addProject(pomPath: string): void {
-        MavenProjectManager.add(pomPath);
+    public async addProject(pomPath: string): Promise<void> {
+        await MavenProjectManager.add(pomPath);
         this.refresh();
     }
 

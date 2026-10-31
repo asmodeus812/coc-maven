@@ -57,7 +57,7 @@ export async function doActivate(context: coc.ExtensionContext): Promise<void> {
     let alternateWindowId: number | undefined;
     pluginInfoProvider.initialize(context);
     // register tree view
-    (await MavenProjectManager.loadProjects()).forEach(prefetchProjectOutputs);
+    fetchProjectOutputs(await MavenProjectManager.loadProjects());
     const mavenExplorerProvider: MavenExplorerProvider = MavenExplorerProvider.getInstance();
     const mavenExplorerView = coc.window.createTreeView("MAVEN PROJECTS", {
         bufhidden: "hide",
@@ -262,7 +262,7 @@ export async function doActivate(context: coc.ExtensionContext): Promise<void> {
                 await mavenExplorerProvider.removeWorkspaceFolder(removedWorkspaceFolder);
             }
             for (const addedWorkspaceFolder of e.added) {
-                (await mavenExplorerProvider.addWorkspaceFolder(addedWorkspaceFolder)).forEach(prefetchProjectOutputs);
+                fetchProjectOutputs(await mavenExplorerProvider.addWorkspaceFolder(addedWorkspaceFolder));
             }
         })
     );
@@ -301,13 +301,18 @@ function loadProjectOutputs(project: MavenProject, outputs: { effectivePom: bool
     }
 }
 
-// a loaded project computes its outputs ahead of the first read; the effective pom follows its own setting, the
-// dependency tree is only needed for the conflict diagnostics
-function prefetchProjectOutputs(project: MavenProject): void {
-    loadProjectOutputs(project, {
-        effectivePom: Settings.Pomfile.prefetchEffectivePom(project.pomPath),
-        dependencyTree: Settings.enableConflictDiagnostics()
-    });
+// the loaded projects of a build compute their outputs ahead of the first read, the other poms on their first read;
+// the effective pom follows its own setting, the dependency tree is only needed for the conflict diagnostics
+function fetchProjectOutputs(projects: MavenProject[]): void {
+    const build: Set<MavenProject> = MavenProjectManager.buildProjects();
+    projects
+        .filter((project) => build.has(project))
+        .forEach((project) =>
+            loadProjectOutputs(project, {
+                effectivePom: Settings.Pomfile.prefetchEffectivePom(project.pomPath),
+                dependencyTree: Settings.enableConflictDiagnostics()
+            })
+        );
 }
 
 async function refreshChangedPom(pomPath: string): Promise<void> {
@@ -330,7 +335,10 @@ async function refreshChangedPom(pomPath: string): Promise<void> {
         }
 
         await project.refresh();
-        loadProjectOutputs(project, eager);
+        // a pom outside of a build loads its outputs on the next read, like it did before the change
+        if (MavenProjectManager.buildProjects().has(project)) {
+            loadProjectOutputs(project, eager);
+        }
     }
 }
 
@@ -349,11 +357,11 @@ function registerPomFileWatcher(context: coc.ExtensionContext): void {
     // a burst of changes to one pom (autosave, :wa, a formatter) refreshes it once, after it stayed unchanged for a while
     const pendingRefreshes = new Map<string, NodeJS.Timer>();
     watcher.onDidCreate(
-        (e: Uri) => {
-            MavenExplorerProvider.getInstance().addProject(e.fsPath);
+        async (e: Uri) => {
+            await MavenExplorerProvider.getInstance().addProject(e.fsPath);
             const project: MavenProject | undefined = MavenProjectManager.get(e.fsPath);
             if (project) {
-                prefetchProjectOutputs(project);
+                fetchProjectOutputs([project]);
             }
         },
         null,

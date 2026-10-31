@@ -3,6 +3,7 @@
 
 import { MavenProject } from "../explorer/model/MavenProject";
 import * as coc from "coc.nvim";
+import * as path from "path";
 import { Settings } from "../Settings";
 
 export class MavenProjectManager {
@@ -61,16 +62,45 @@ export class MavenProjectManager {
         return MavenProjectManager.getInstance()._projectMap.get(pomPath);
     }
 
+    /**
+     * The projects that take part in a build: the roots, poms with no other pom in a folder above them, and the modules
+     * the projects of a build list. Any other pom sits inside a project without being part of its build, such as the
+     * test inputs or the samples of that project, maven runs in the background for those would only fail or go to waste
+     */
+    public static buildProjects(): Set<MavenProject> {
+        const byPath: Map<string, MavenProject> = new Map(
+            MavenProjectManager.projects.filter((p) => p.parsed).map((p) => [path.resolve(p.pomPath), p])
+        );
+        const folders: Set<string> = new Set(Array.from(byPath.keys()).map((pomPath) => path.dirname(pomPath)));
+        const build: Set<MavenProject> = new Set();
+        const pending: MavenProject[] = Array.from(byPath.entries())
+            .filter(([pomPath]) => !hasFolderAbove(path.dirname(pomPath), folders))
+            .map(([, project]) => project);
+        while (pending.length > 0) {
+            const project: MavenProject = pending.pop() as MavenProject;
+            if (!build.has(project)) {
+                build.add(project);
+                project.buildModules.forEach((module) => {
+                    const moduleProject: MavenProject | undefined = byPath.get(path.resolve(module));
+                    if (moduleProject) {
+                        pending.push(moduleProject);
+                    }
+                });
+            }
+        }
+        return build;
+    }
+
     public static update(...items: MavenProject[]): void {
         for (const item of items) {
             MavenProjectManager.getInstance()._projectMap.set(item.pomPath, item);
         }
     }
 
-    public static add(pomPath: string): void {
+    public static async add(pomPath: string): Promise<void> {
         const newProject = new MavenProject(pomPath);
-        newProject.parsePom();
         MavenProjectManager.getInstance()._projectMap.set(pomPath, newProject);
+        await newProject.parsePom();
     }
 
     public static remove(pomPath: string): void {
@@ -83,6 +113,16 @@ export class MavenProjectManager {
             MavenProjectManager.remove(pomPath);
         }
     }
+}
+
+// whether one of the folders is a parent folder of the folder
+function hasFolderAbove(folder: string, folders: Set<string>): boolean {
+    let current: string = path.dirname(folder);
+    while (current !== folder && !folders.has(current)) {
+        folder = current;
+        current = path.dirname(folder);
+    }
+    return current !== folder;
 }
 
 async function getAllPomPaths(workspaceFolder?: coc.WorkspaceFolder): Promise<string[]> {
