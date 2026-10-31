@@ -450,15 +450,6 @@ maven.goal.deploy {project}?             *coc-maven-command-maven.goal.deploy*
 
 These commands run the lifecycle phase of the same name in the terminal.
 
-maven.lifecycle.execute {args}     *coc-maven-command-maven.lifecycle.execute*
-
-Runs a lifecycle phase given as a table, for your own mappings. {args} has the
-form `{'phase': 'package', 'pomPath': '/work/app/pom.xml'}`, or
-`{'phase': ..., 'project': {'pomPath': ...}}`. The phase must be one of the
-ten phases of |coc-maven-command-maven.goal.clean|, otherwise the command
-fails with "Unsupported Maven lifecycle phase: {phase}". Pass the table with
-|CocAction('runCommand')|.
-
 maven.favorites {project}?                 *coc-maven-command-maven.favorites*
 
 Asks "Select a favorite command ..." and runs the choice in the terminal. The

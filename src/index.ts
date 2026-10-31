@@ -116,9 +116,14 @@ export async function doActivate(context: coc.ExtensionContext): Promise<void> {
     registerCommand(context, "maven.project.addDependency", async (data) => {
         addDependencyHandler(data);
     });
-    registerCommand(context, "maven.project.setDependencyVersion", async (data: any) => {
-        setDependencyVersionHandlerGeneric(data);
-    });
+    registerCommand(
+        context,
+        "maven.project.setDependencyVersion",
+        async (data: any) => {
+            setDependencyVersionHandlerGeneric(data);
+        },
+        true
+    );
     registerCommand(context, "maven.project.showDependencies", async (data: any) => {
         showDependenciesHandler(data);
     });
@@ -146,7 +151,7 @@ export async function doActivate(context: coc.ExtensionContext): Promise<void> {
     });
     registerCommand(context, "maven.goal.execute", async (node?: string | MavenProject) => await Utils.executeMavenCommand(await resolveProject(node)));
     registerCommand(context, "maven.favorites", async (node?: string | MavenProject) => await runFavoriteCommandsHandler(await resolveProject(node)));
-    registerCommand(context, "maven.lifecycle.execute", executeLifecyclePhaseHandler);
+    registerCommand(context, "maven.lifecycle.execute", executeLifecyclePhaseHandler, true);
     DEFAULT_MAVEN_LIFECYCLES.forEach((goal: string) => {
         registerCommand(context, `maven.goal.${goal}`, async (node?: string | MavenProject) => {
             const project: MavenProject | undefined = await resolveProject(node);
