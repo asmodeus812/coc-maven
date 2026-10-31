@@ -513,7 +513,9 @@ already shows it.
 maven.project.configuration.update
 
 Refreshes the explorer and, when coc-java is installed, makes coc-java reload
-the configuration of all Maven projects. Without coc-java it warns that the
+the configuration of all Maven projects, saying "Updating the configuration of
+N Maven projects" (or warning "No Maven projects to update, open a Maven
+project" when there are none). Without coc-java it warns that the
 projects were not reloaded, and a rejected request is reported as "Unable to
 update the project configuration {reason}".
 

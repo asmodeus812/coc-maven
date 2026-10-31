@@ -144,10 +144,13 @@ export async function doActivate(context: coc.ExtensionContext): Promise<void> {
         if (isJavaExtEnabled()) {
             // Reload All Maven Projects in JDTLS, impl in upstream
             try {
-                await coc.commands.executeCommand(
-                    "java.projectConfiguration.update",
-                    MavenProjectManager.projects.map((project: any) => Uri.file(project.pomPath))
-                );
+                const poms: Uri[] = MavenProjectManager.projects.map((project: any) => Uri.file(project.pomPath));
+                if (poms.length === 0) {
+                    coc.window.showWarningMessage("No Maven projects to update, open a Maven project");
+                } else {
+                    await coc.commands.executeCommand("java.projectConfiguration.update", poms);
+                    coc.window.showInformationMessage(`Updating the configuration of ${poms.length} Maven project${poms.length === 1 ? "" : "s"}`);
+                }
             } catch (error) {
                 coc.window.showErrorMessage(`Unable to update the project configuration ${(error as Error).message}`);
             }
