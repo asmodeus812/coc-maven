@@ -45,6 +45,14 @@ import { executeInTerminal } from "./utils/mavenUtils";
 import { dependenciesContentUri, effectivePomContentUri, registerCommand, selectProjectIfNecessary } from "./utils/uiUtils";
 import { focusResourceLocation } from "./utils/editUtils";
 
+// coc disposes a tree view for good when the tab it was shown from closes (private `_targetTabId`, coc.nvim
+// src/tree/TreeView.ts); the view outlives that tab, so the field stays unset
+function keepAcrossTabs(view: object): void {
+    if ("_targetTabId" in view) {
+        Object.defineProperty(view, "_targetTabId", { get: () => undefined, set: () => undefined, configurable: true });
+    }
+}
+
 const POM_REFRESH_DELAY_MS = 1000;
 
 export async function activate(context: coc.ExtensionContext): Promise<void> {
@@ -64,6 +72,7 @@ export async function doActivate(context: coc.ExtensionContext): Promise<void> {
         treeDataProvider: mavenExplorerProvider
     });
 
+    keepAcrossTabs(mavenExplorerView);
     context.subscriptions.push(mavenExplorerView);
     MavenExplorerProvider.getInstance().refresh();
     // pom.xml listener to refresh tree view
