@@ -7,7 +7,7 @@ import { Uri, workspace } from "coc.nvim";
 import * as fse from "fs-extra";
 import * as path from "path";
 import { Settings } from "../Settings";
-import { getPathToExtensionRoot } from "../utils/contextUtils";
+import { ARCHETYPE_CATALOG_FILE, getPathToExtensionRoot, getPathToTempFolder, getPathToWorkspaceStorage } from "../utils/contextUtils";
 import { UserError } from "../utils/errorUtils";
 import { XmlTagName, detectDocumentIndent, getChildrenByTags, getTextFromNode, parseDocument } from "../utils/lexerUtils";
 import { executeInBackground, getEmbeddedMavenWrapper, getMaven } from "../utils/mavenUtils";
@@ -100,7 +100,8 @@ export class ArchetypeModule {
     public static async updateArchetypeCatalog(): Promise<void> {
         const xml: string = await Utils.downloadFile(REMOTE_ARCHETYPE_CATALOG_URL, true);
         const archetypes: Archetype[] = await ArchetypeModule.listArchetypeFromXml(xml);
-        const targetFilePath: string = path.join(getPathToExtensionRoot(), "resources", "archetypes.json");
+        // the storage of the extension, the bundled catalog stays as shipped and an update survives a reinstall
+        const targetFilePath: string = getPathToWorkspaceStorage(ARCHETYPE_CATALOG_FILE) ?? getPathToTempFolder(ARCHETYPE_CATALOG_FILE);
         await fse.ensureFile(targetFilePath);
         await fse.writeJSON(targetFilePath, archetypes);
     }

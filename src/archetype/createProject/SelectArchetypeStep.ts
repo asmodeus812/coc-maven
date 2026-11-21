@@ -4,7 +4,12 @@
 import { QuickPickItem, window } from "coc.nvim";
 import * as fse from "fs-extra";
 import * as path from "path";
-import { getMavenLocalRepository, getPathToExtensionRoot } from "../../utils/contextUtils";
+import {
+    ARCHETYPE_CATALOG_FILE,
+    getMavenLocalRepository,
+    getPathToExtensionRoot,
+    getPathToWorkspaceStorage
+} from "../../utils/contextUtils";
 import { Archetype } from "../Archetype";
 import { ArchetypeModule } from "../ArchetypeModule";
 import { IProjectCreationMetadata, IProjectCreationStep, StepResult } from "./types";
@@ -110,7 +115,12 @@ export class SelectArchetypeStep implements IProjectCreationStep {
     }
 
     private async getCachedRemoteArchetypeItems(): Promise<Archetype[]> {
-        const contentPath: string = getPathToExtensionRoot("resources", "archetypes.json");
+        // the catalog of the last update, otherwise the one bundled with the extension
+        const updatedPath: string | undefined = getPathToWorkspaceStorage(ARCHETYPE_CATALOG_FILE);
+        const contentPath: string =
+            updatedPath !== undefined && (await fse.pathExists(updatedPath))
+                ? updatedPath
+                : getPathToExtensionRoot("resources", ARCHETYPE_CATALOG_FILE);
         if (await fse.pathExists(contentPath)) {
             return (await fse.readJSON(contentPath)).map(
                 (rawItem: Archetype) =>

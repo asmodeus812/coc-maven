@@ -79,6 +79,9 @@ export function getAiKey(): string {
     return EXTENSION_AI_KEY;
 }
 
+// the archetype catalog, bundled under resources, an update writes it to the storage of the extension
+export const ARCHETYPE_CATALOG_FILE = "archetypes.json";
+
 export function getPathToTempFolder(...args: string[]): string {
     return path.join(TEMP_FOLDER_PER_USER, ...args);
 }

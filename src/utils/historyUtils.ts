@@ -3,7 +3,7 @@
 
 import * as fse from "fs-extra";
 import md5 from "md5";
-import { getPathToTempFolder } from "./contextUtils";
+import { getPathToTempFolder, getPathToWorkspaceStorage } from "./contextUtils";
 
 export interface ICommandHistory {
     pomPath: string;
@@ -49,6 +49,8 @@ export async function getLRUCommands(pomPath: string): Promise<ICommandHistoryEn
     return [];
 }
 
+// in the storage of the extension so the history outlives a reboot, the temporary folder only without a storage
 function getCommandHistoryCachePath(pomXmlFilePath: string): string {
-    return getPathToTempFolder(md5(pomXmlFilePath), "commandHistory.json");
+    const fileName = `${md5(pomXmlFilePath)}.json`;
+    return getPathToWorkspaceStorage("history", fileName) ?? getPathToTempFolder("history", fileName);
 }
