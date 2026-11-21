@@ -44,6 +44,7 @@ import { loadMavenSettingsFilePath, loadPackageInfo } from "./utils/contextUtils
 import { executeInTerminal } from "./utils/mavenUtils";
 import { dependenciesContentUri, effectivePomContentUri, registerCommand, selectProjectIfNecessary } from "./utils/uiUtils";
 import { focusResourceLocation } from "./utils/editUtils";
+import { openGeneratedResource } from "./handlers/generatedResourcesHandler";
 
 // coc disposes a tree view for good when the tab it was shown from closes (private `_targetTabId`, coc.nvim
 // src/tree/TreeView.ts); the view outlives that tab, so the field stays unset
@@ -158,7 +159,9 @@ export async function doActivate(context: coc.ExtensionContext): Promise<void> {
                     coc.window.showWarningMessage("No Maven projects to update, open a Maven project");
                 } else {
                     await coc.commands.executeCommand("java.projectConfiguration.update", poms);
-                    coc.window.showInformationMessage(`Updating the configuration of ${poms.length} Maven project${poms.length === 1 ? "" : "s"}`);
+                    coc.window.showInformationMessage(
+                        `Updating the configuration of ${poms.length} Maven project${poms.length === 1 ? "" : "s"}`
+                    );
                 }
             } catch (error) {
                 coc.window.showErrorMessage(`Unable to update the project configuration ${(error as Error).message}`);
@@ -289,6 +292,14 @@ export async function doActivate(context: coc.ExtensionContext): Promise<void> {
         const project: MavenProject | undefined = await resolveProject(node);
         if (project) {
             await focusResourceLocation(coc.Uri.file(project.pomPath).toString(), alternateWindowId);
+        }
+    });
+    registerCommand(context, "maven.project.generatedResources", async (node?: string | MavenProject) => {
+        const project: MavenProject | undefined = await resolveProject(node);
+        if (project) {
+            await openGeneratedResource(project, async (file: string) =>
+                focusResourceLocation(coc.Uri.file(file).toString(), alternateWindowId)
+            );
         }
     });
     registerCommand(context, "maven.explorer.favorites", runFavoriteCommandsHandler, true);

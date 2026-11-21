@@ -329,6 +329,10 @@
                 "title": "Open Project pom file"
             },
             {
+                "command": "maven.project.generatedResources",
+                "title": "Open Generated Maven Files of a Project"
+            },
+            {
                 "command": "maven.project.configuration.update",
                 "title": "Update Java Project Configuration"
             },
