@@ -10,6 +10,9 @@ import { mavenOutputChannel } from "./mavenOutputChannel";
 type FavoriteFormat = { alias?: string; command: string; debug?: boolean };
 type EnvironmentSetting = { environmentVariable: string; value: string };
 let loggedJavaHome: string | undefined;
+// the names of maven.terminal.customEnv a shell or a process environment cannot take, see getEnvironment
+export const ENV_VAR_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
+const skippedNames: Set<string> = new Set();
 export class Settings {
     public static isGAVCompletionEnabled(): boolean {
         return !!_getMavenSection<boolean>("completion.gavEnabled");
@@ -109,12 +112,22 @@ export class Settings {
         }
     };
 
+    // the variables of maven.terminal.customEnv for the terminal and for background runs alike, a name that is not made of
+    // letters, digits and underscores or that starts with a digit is skipped, and logged once
     public static getEnvironment(resourceOrFilepath?: Uri | string): { [key: string]: string } {
         const customEnv: { [key: string]: string } = {};
         const environmentSettings: EnvironmentSetting[] | undefined = Settings.Terminal.customEnv(resourceOrFilepath);
         if (environmentSettings) {
             environmentSettings.forEach((s: EnvironmentSetting) => {
-                customEnv[s.environmentVariable] = s.value;
+                const name: unknown = s.environmentVariable;
+                if (typeof name !== "string" || !ENV_VAR_NAME_PATTERN.test(name)) {
+                    if (!skippedNames.has(String(name))) {
+                        skippedNames.add(String(name));
+                        mavenOutputChannel.appendLine(`Skipping environment variable with unsupported name: ${String(name)}`);
+                    }
+                    return;
+                }
+                customEnv[name] = s.value;
                 if (s.environmentVariable === "JAVA_HOME" && s.value !== loggedJavaHome) {
                     loggedJavaHome = s.value;
                     mavenOutputChannel.appendLine(`Using JAVA_HOME=${s.value} (source: maven.terminal.customEnv)`);

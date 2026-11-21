@@ -5,7 +5,7 @@ import * as fse from "fs-extra";
 import * as path from "path";
 import * as coc from "coc.nvim";
 import { mavenOutputChannel } from "./mavenOutputChannel";
-import { Settings } from "./Settings";
+import { ENV_VAR_NAME_PATTERN, Settings } from "./Settings";
 import { executeCommand } from "./utils/cpUtils";
 
 export interface ITerminalOptions {
@@ -208,10 +208,6 @@ export async function toWinPath(filepath: string): Promise<string> {
 
 export const mavenTerminal: MavenTerminal = new MavenTerminal();
 
-// Only well-formed identifiers can be exported safely across every shell we support, anything else can't be made safe by
-// escaping (e.g. it could inject a second statement).
-const ENV_VAR_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
-
 function escapeForPosixShell(value: string): string {
     // Single quotes are literal in POSIX shells except for the quote character itself, so this is safe against $(),
     // backticks, "$VAR", and other expansions.
@@ -232,6 +228,9 @@ function escapeForFishShell(value: string): string {
 function setupEnvForShell(terminal: coc.Terminal, env: { [envKey: string]: string }): void {
     const shellType: ShellType = currentWindowsShell();
     Object.keys(env).forEach((key) => {
+        // only well-formed identifiers can be exported safely across every shell we support, anything else can't be made
+        // safe by escaping (e.g. it could inject a second statement); customEnv names are already checked in
+        // Settings.getEnvironment, this covers the variables callers add
         if (!ENV_VAR_NAME_PATTERN.test(key)) {
             mavenOutputChannel.appendLine(`Skipping environment variable with unsupported name: ${key}`);
             return;
