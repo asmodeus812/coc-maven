@@ -50,60 +50,6 @@
             "type": "object",
             "title": "Maven",
             "properties": {
-                "maven.settingsFile": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "default": null,
-                    "description": "Path to a custom Maven settings.xml file to use (overrides the default settings).",
-                    "scope": "machine"
-                },
-                "maven.explorer.view": {
-                    "type": "string",
-                    "enum": [
-                        "flat",
-                        "hierarchical"
-                    ],
-                    "default": "hierarchical",
-                    "scope": "window",
-                    "description": "Layout of the Maven explorer: all projects on one level, or modules nested below the project that declares them."
-                },
-                "maven.pomfile.globPattern": {
-                    "type": "string",
-                    "default": "**/pom.xml",
-                    "description": "Glob pattern used to resolve and distinguish a POM file. Used to enable various lsp capabilities for pom files.",
-                    "scope": "window"
-                },
-                "maven.pomfile.autoUpdateEffectivePOM": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Automatically recompute the Effective POM when a POM file changes.",
-                    "scope": "window"
-                },
-                "maven.completion.gavEnabled": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Query the remote Maven Central search service for GAV (GroupId, ArtifactId, Version) completions in pom.xml. The completions from the Java language server index and the local repository stay on.",
-                    "scope": "window"
-                },
-                "maven.dependency.enableConflictDiagnostics": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Enable diagnostics for dependency version and conflict issues in the dependency tree.",
-                    "scope": "window"
-                },
-                "maven.projectOpenBehavior": {
-                    "default": "Interactive",
-                    "type": "string",
-                    "scope": "window",
-                    "description": "Default action when prompted to open a detected Maven project.",
-                    "enum": [
-                        "Interactive",
-                        "Open",
-                        "Cancel"
-                    ]
-                },
                 "maven.executable.path": {
                     "type": "string",
                     "default": "",
@@ -131,6 +77,15 @@
                     "default": "",
                     "description": "Additional command-line options to pass to every Maven invocation (e.g., -T 1C, -Dmaven.test.skip=true).",
                     "scope": "machine-overridable"
+                },
+                "maven.settingsFile": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "default": null,
+                    "description": "Path to a custom Maven settings.xml file to use (overrides the default settings).",
+                    "scope": "machine"
                 },
                 "maven.terminal.customEnv": {
                     "type": "array",
@@ -196,6 +151,16 @@
                     "description": "Saved Maven commands that appear as quick actions in the terminal.",
                     "scope": "resource"
                 },
+                "maven.explorer.view": {
+                    "type": "string",
+                    "enum": [
+                        "flat",
+                        "hierarchical"
+                    ],
+                    "default": "hierarchical",
+                    "scope": "window",
+                    "description": "Layout of the Maven explorer: all projects on one level, or modules nested below the project that declares them."
+                },
                 "maven.explorer.projectName": {
                     "default": "${project.name}",
                     "type": "string",
@@ -209,6 +174,24 @@
                         "${project.groupId}.${project.artifactId}-${project.version}"
                     ]
                 },
+                "maven.pomfile.globPattern": {
+                    "type": "string",
+                    "default": "**/pom.xml",
+                    "description": "Glob pattern used to resolve and distinguish a POM file. Used to enable various lsp capabilities for pom files.",
+                    "scope": "window"
+                },
+                "maven.pomfile.prefetchEffectivePom": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Precompute Effective POMs in the background to speed up Maven features.",
+                    "scope": "resource"
+                },
+                "maven.pomfile.autoUpdateEffectivePOM": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Automatically recompute the Effective POM when a POM file changes.",
+                    "scope": "window"
+                },
                 "maven.excludedFolders": {
                     "type": "array",
                     "default": [
@@ -221,11 +204,28 @@
                     "description": "Glob patterns for folders to ignore in Maven project discovery and the Maven view.",
                     "scope": "resource"
                 },
-                "maven.pomfile.prefetchEffectivePom": {
+                "maven.completion.gavEnabled": {
                     "type": "boolean",
                     "default": true,
-                    "description": "Precompute Effective POMs in the background to speed up Maven features.",
-                    "scope": "resource"
+                    "description": "Query the remote Maven Central search service for GAV (GroupId, ArtifactId, Version) completions in pom.xml. The completions from the Java language server index and the local repository stay on.",
+                    "scope": "window"
+                },
+                "maven.dependency.enableConflictDiagnostics": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable diagnostics for dependency version and conflict issues in the dependency tree.",
+                    "scope": "window"
+                },
+                "maven.projectOpenBehavior": {
+                    "default": "Interactive",
+                    "type": "string",
+                    "scope": "window",
+                    "description": "Default action when prompted to open a detected Maven project.",
+                    "enum": [
+                        "Interactive",
+                        "Open",
+                        "Cancel"
+                    ]
                 },
                 "maven.outputDirectory": {
                     "type": "string",
