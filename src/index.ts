@@ -443,7 +443,7 @@ function registerConfigChangeListener(context: coc.ExtensionContext): void {
             mavenTerminal.dispose();
         }
         if (
-            e.affectsConfiguration("maven.view") ||
+            e.affectsConfiguration("maven.explorer.view") ||
             e.affectsConfiguration("maven.pomfile.globPattern") ||
             e.affectsConfiguration("maven.explorer.projectName") ||
             e.affectsConfiguration("maven.terminal.favorites")

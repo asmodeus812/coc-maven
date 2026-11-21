@@ -25,15 +25,15 @@ export class Settings {
     }
 
     public static viewType(): string | undefined {
-        return _getMavenSection("view");
+        return _getMavenSection("explorer.view");
     }
 
     public static changeToFlatView(): void {
-        workspace.getConfiguration().update("maven.view", "flat", true);
+        workspace.getConfiguration().update("maven.explorer.view", "flat", true);
     }
 
     public static changeToHierarchicalView(): void {
-        workspace.getConfiguration().update("maven.view", "hierarchical", true);
+        workspace.getConfiguration().update("maven.explorer.view", "hierarchical", true);
     }
 
     public static storeFavorite(favorite: FavoriteFormat): void {

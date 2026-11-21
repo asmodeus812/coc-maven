@@ -169,7 +169,7 @@
                     "description": "Saved Maven commands that appear as quick actions in the terminal.",
                     "scope": "resource"
                 },
-                "maven.view": {
+                "maven.explorer.view": {
                     "type": "string",
                     "enum": [
                         "flat",
@@ -177,7 +177,7 @@
                     ],
                     "default": "hierarchical",
                     "scope": "window",
-                    "description": "Layout of the Maven Projects view: show modules as a flat list or as a nested hierarchy."
+                    "description": "Layout of the Maven explorer: all projects on one level, or modules nested below the project that declares them."
                 },
                 "maven.pomfile.globPattern": {
                     "type": "string",
