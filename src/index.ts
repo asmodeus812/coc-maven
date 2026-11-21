@@ -473,6 +473,9 @@ function registerConfigChangeListener(context: coc.ExtensionContext): void {
         if (e.affectsConfiguration("maven.pomfile.globPattern")) {
             replacePomFileWatcher();
         }
+        if (e.affectsConfiguration("maven.dependency.enableConflictDiagnostics")) {
+            await diagnosticProvider.refreshOpenPoms();
+        }
         if (
             e.affectsConfiguration("maven.explorer.view") ||
             e.affectsConfiguration("maven.pomfile.globPattern") ||

@@ -50,6 +50,20 @@ class DiagnosticProvider {
         }, timeout);
     }
 
+    // maven.dependency.enableConflictDiagnostics changed: off clears every reported conflict right away, on reports the
+    // conflicts of the poms that are open, the others get theirs when they are opened
+    public async refreshOpenPoms(): Promise<void> {
+        if (Settings.enableConflictDiagnostics() === false) {
+            this._collection?.clear();
+            this.conflicts.clear();
+        } else {
+            const poms: string[] = coc.workspace.textDocuments.map((document) => document.uri).filter((uri) => uri.endsWith("pom.xml"));
+            for (const uri of poms) {
+                await this.refreshDiagnostics(coc.Uri.parse(uri));
+            }
+        }
+    }
+
     public async refreshDiagnostics(uri: coc.Uri): Promise<void> {
         const diagnostics: coc.Diagnostic[] = [];
         if (Settings.enableConflictDiagnostics() === false) {
