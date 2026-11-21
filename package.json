@@ -50,12 +50,6 @@
             "type": "object",
             "title": "Maven",
             "properties": {
-                "maven.completion.gavEnabled": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Query the remote Maven Central search service for GAV (GroupId, ArtifactId, Version) completions in pom.xml. The completions from the Java language server index and the local repository stay on.",
-                    "scope": "window"
-                },
                 "maven.settingsFile": {
                     "type": [
                         "string",
@@ -65,35 +59,62 @@
                     "description": "Path to a custom Maven settings.xml file to use (overrides the default settings).",
                     "scope": "machine"
                 },
-                "maven.outputDirectory": {
+                "maven.explorer.view": {
                     "type": "string",
-                    "default": "",
-                    "description": "Folder for the files Maven generates for a project: effective-pom.xml, dependency-tree.txt, profiles.txt and plugins/. Empty uses a folder named after the md5 of the pom path in the coc storage folder of the extension. A relative path resolves against the folder of the pom, for example target/generated. ${workspaceFolder}, ${projectDir}, ${relativeProjectDir}, environment variables and a leading ~ are expanded.",
-                    "scope": "resource"
-                },
-                "maven.excludedFolders": {
-                    "type": "array",
-                    "default": [
-                        "**/.*",
-                        "**/node_modules",
-                        "**/target",
-                        "**/bin",
-                        "**/archetype-resources"
+                    "enum": [
+                        "flat",
+                        "hierarchical"
                     ],
-                    "description": "Glob patterns for folders to ignore in Maven project discovery and the Maven view.",
-                    "scope": "resource"
+                    "default": "hierarchical",
+                    "scope": "window",
+                    "description": "Layout of the Maven explorer: all projects on one level, or modules nested below the project that declares them."
                 },
-                "maven.executable.preferMavenWrapper": {
+                "maven.pomfile.globPattern": {
+                    "type": "string",
+                    "default": "**/pom.xml",
+                    "description": "Glob pattern used to resolve and distinguish a POM file. Used to enable various lsp capabilities for pom files.",
+                    "scope": "window"
+                },
+                "maven.pomfile.autoUpdateEffectivePOM": {
                     "type": "boolean",
                     "default": true,
-                    "description": "Prefer using the Maven Wrapper (mvnw) if present in the project.",
-                    "scope": "resource"
+                    "description": "Automatically recompute the Effective POM when a POM file changes.",
+                    "scope": "window"
+                },
+                "maven.completion.gavEnabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Query the remote Maven Central search service for GAV (GroupId, ArtifactId, Version) completions in pom.xml. The completions from the Java language server index and the local repository stay on.",
+                    "scope": "window"
+                },
+                "maven.dependency.enableConflictDiagnostics": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable diagnostics for dependency version and conflict issues in the dependency tree.",
+                    "scope": "window"
+                },
+                "maven.projectOpenBehavior": {
+                    "default": "Interactive",
+                    "type": "string",
+                    "scope": "window",
+                    "description": "Default action when prompted to open a detected Maven project.",
+                    "enum": [
+                        "Interactive",
+                        "Open",
+                        "Cancel"
+                    ]
                 },
                 "maven.executable.path": {
                     "type": "string",
                     "default": "",
                     "description": "Absolute path to the Maven executable to run (e.g., /usr/bin/mvn).",
                     "scope": "machine-overridable"
+                },
+                "maven.executable.preferMavenWrapper": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Prefer using the Maven Wrapper (mvnw) if present in the project.",
+                    "scope": "resource"
                 },
                 "maven.executable.options": {
                     "anyOf": [
@@ -175,55 +196,10 @@
                     "description": "Saved Maven commands that appear as quick actions in the terminal.",
                     "scope": "resource"
                 },
-                "maven.explorer.view": {
-                    "type": "string",
-                    "enum": [
-                        "flat",
-                        "hierarchical"
-                    ],
-                    "default": "hierarchical",
-                    "scope": "window",
-                    "description": "Layout of the Maven explorer: all projects on one level, or modules nested below the project that declares them."
-                },
-                "maven.pomfile.globPattern": {
-                    "type": "string",
-                    "default": "**/pom.xml",
-                    "description": "Glob pattern used to resolve and distinguish a POM file. Used to enable various lsp capabilities for pom files.",
-                    "scope": "window"
-                },
-                "maven.pomfile.autoUpdateEffectivePOM": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Automatically recompute the Effective POM when a POM file changes.",
-                    "scope": "window"
-                },
-                "maven.pomfile.prefetchEffectivePom": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Precompute Effective POMs in the background to speed up Maven features.",
-                    "scope": "resource"
-                },
-                "maven.dependency.enableConflictDiagnostics": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Enable diagnostics for dependency version and conflict issues in the dependency tree.",
-                    "scope": "window"
-                },
-                "maven.projectOpenBehavior": {
-                    "default": "Interactive",
-                    "type": "string",
-                    "scope": "window",
-                    "description": "Default action when prompted to open a detected Maven project.",
-                    "enum": [
-                        "Interactive",
-                        "Open",
-                        "Cancel"
-                    ]
-                },
                 "maven.explorer.projectName": {
                     "default": "${project.name}",
                     "type": "string",
-                    "scope": "window",
+                    "scope": "resource",
                     "description": "Template for how project names are shown in the Maven view.",
                     "enum": [
                         "${project.name}",
@@ -232,33 +208,41 @@
                         "${project.groupId}.${project.artifactId}",
                         "${project.groupId}.${project.artifactId}-${project.version}"
                     ]
+                },
+                "maven.excludedFolders": {
+                    "type": "array",
+                    "default": [
+                        "**/.*",
+                        "**/node_modules",
+                        "**/target",
+                        "**/bin",
+                        "**/archetype-resources"
+                    ],
+                    "description": "Glob patterns for folders to ignore in Maven project discovery and the Maven view.",
+                    "scope": "resource"
+                },
+                "maven.pomfile.prefetchEffectivePom": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Precompute Effective POMs in the background to speed up Maven features.",
+                    "scope": "resource"
+                },
+                "maven.outputDirectory": {
+                    "type": "string",
+                    "default": "",
+                    "description": "Folder for the files Maven generates for a project: effective-pom.xml, dependency-tree.txt, profiles.txt and plugins/. Empty uses a folder named after the md5 of the pom path in the coc storage folder of the extension. A relative path resolves against the folder of the pom, for example target/generated. ${workspaceFolder}, ${projectDir}, ${relativeProjectDir}, environment variables and a leading ~ are expanded.",
+                    "scope": "resource"
                 }
             }
         },
         "commands": [
             {
-                "command": "maven.history",
-                "title": "Open Maven Command History"
-            },
-            {
-                "command": "maven.archetype.generate",
-                "title": "Generate Project from Maven Archetype"
-            },
-            {
-                "command": "maven.archetype.update",
-                "title": "Update Maven Archetype Catalog"
-            },
-            {
-                "command": "maven.project.effectivePom",
-                "title": "Show Effective pom file"
+                "command": "maven.explorer.show",
+                "title": "Show Maven Explorer"
             },
             {
                 "command": "maven.explorer.refresh",
                 "title": "Refresh Maven Explorer"
-            },
-            {
-                "command": "maven.explorer.show",
-                "title": "Show Maven Explorer"
             },
             {
                 "command": "maven.explorer.flat",
@@ -267,18 +251,6 @@
             {
                 "command": "maven.explorer.hierarchical",
                 "title": "Switch to Hierarchical View"
-            },
-            {
-                "command": "maven.project.addDependency",
-                "title": "Add Dependency to pom file"
-            },
-            {
-                "command": "maven.project.showDependencies",
-                "title": "Show Project Dependencies"
-            },
-            {
-                "command": "maven.project.configuration.update",
-                "title": "Update Java Project Configuration"
             },
             {
                 "command": "maven.goal.execute",
@@ -337,12 +309,40 @@
                 "title": "Add Favorite Maven Command"
             },
             {
+                "command": "maven.history",
+                "title": "Open Maven Command History"
+            },
+            {
+                "command": "maven.project.effectivePom",
+                "title": "Show Effective pom file"
+            },
+            {
+                "command": "maven.project.showDependencies",
+                "title": "Show Project Dependencies"
+            },
+            {
+                "command": "maven.project.addDependency",
+                "title": "Add Dependency to pom file"
+            },
+            {
                 "command": "maven.project.openPom",
                 "title": "Open Project pom file"
             },
             {
+                "command": "maven.project.configuration.update",
+                "title": "Update Java Project Configuration"
+            },
+            {
+                "command": "maven.archetype.generate",
+                "title": "Generate Project from Maven Archetype"
+            },
+            {
                 "command": "maven.new.module",
                 "title": "Create New Maven Module"
+            },
+            {
+                "command": "maven.archetype.update",
+                "title": "Update Maven Archetype Catalog"
             }
         ]
     }
