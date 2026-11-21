@@ -78,8 +78,10 @@ runs the action of the node under the cursor, `<Tab>` shows the node actions
 and `t` expands or collapses a node.
 
 The explorer refreshes by itself when a `pom.xml` is created, changed or
-deleted, when a workspace folder is added or removed, and when one of its
-settings changes. Refresh it by hand with
+deleted, when a workspace folder is added or removed, and when
+`maven.explorer.view`, `maven.explorer.projectName`,
+`maven.pomfile.globPattern`, `maven.excludedFolders` or
+`maven.terminal.favorites` changes. Refresh it by hand with
 |coc-maven-command-maven.explorer.refresh|.
 
 ------------------------------------------------------------------------------

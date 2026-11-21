@@ -23,7 +23,8 @@ active, without `:helptags`:
 - A JDK that Maven can find through `JAVA_HOME`.
 - Optional: `coc-java` (or `coc-java-dev`). It provides the artifact index
   for completion and the artifact searcher, and reloads and imports the Java
-  projects.
+  projects. The artifact index only works when the language server runs in
+  standard mode.
 - Optional: `coc-xml`. When it is active, the extension leaves out its own
   schema completion and schema hover for `pom.xml`.
 - Network access to `search.maven.org` and `repo1.maven.org` for the artifact
@@ -54,10 +55,11 @@ vim.g.coc_filetype_map = {
 }
 ```
 
-### Java and Maven
+### JAVA_HOME
 
 Maven needs `JAVA_HOME`. Set it in the environment that starts Neovim, or give
-it to the extension with `maven.terminal.customEnv`:
+it to the extension with `maven.terminal.customEnv` (see
+[Terminal and environment](#terminal-and-environment)):
 
 ```json
 {
@@ -77,56 +79,26 @@ it to the extension with `maven.terminal.customEnv`:
 On Windows, escape backslashes in the value:
 `"C:\\Program Files\\Java\\jdk-21"`.
 
-To use a specific Maven, set `maven.executable.path`. A Maven `settings.xml`
-outside `~/.m2/settings.xml` goes into `maven.settingsFile`. The extension
-reads `<localRepository>` from the settings file to find the local repository,
-which defaults to `~/.m2/repository`.
-
-### The Java language server
-
-Install `coc-java` for the artifact index and the artifact searcher. The
-artifact index only works when the language server runs in standard mode.
-
 ## Configuration
 
-Set these keys in `coc-settings.json` (`:CocConfig` opens it). The settings
-come in two scopes:
+Set these keys in `coc-settings.json` (`:CocConfig` opens it). The keys are
+grouped by namespace. Each group says how its keys are read:
 
-- **Global** settings have one value for every project. Set them in your user
-  `coc-settings.json`.
-- **Per-project** settings are read for the `pom.xml` at hand, so the
-  `.vim/coc-settings.json` of a workspace folder can override them for the
-  projects in it.
+- **Per project**: the key is read for the `pom.xml` at hand, so the
+  `.vim/coc-settings.json` of the workspace folder that contains the pom
+  overrides your user value for the projects in it.
+- **For the editor**: the key is read without a pom. coc resolves it against
+  its current workspace root, so it has one value for all projects at a time.
 
-### Global settings
+### Maven executable
 
-| Key | Type | Default | Effect |
-|---|---|---|---|
-| `maven.settingsFile` | string or null | `null` | The Maven `settings.xml` for every Maven run, whichever executable runs it. Also the file read for `<localRepository>`. |
-| `maven.explorer.view` | `"flat"` or `"hierarchical"` | `"hierarchical"` | The explorer lists all projects on one level, or nests modules below the project that declares them. |
-| `maven.pomfile.globPattern` | string | `"**/pom.xml"` | Finds the poms of the workspace; the file watcher observes it too. |
-| `maven.pomfile.autoUpdateEffectivePOM` | boolean | `true` | Recompute the effective pom of a project after its `pom.xml` changes on disk. |
-| `maven.completion.gavEnabled` | boolean | `true` | Look up `groupId`, `artifactId` and `version` candidates on Maven Central. |
-| `maven.dependency.enableConflictDiagnostics` | boolean | `true` | Report dependency conflicts as warnings. |
-| `maven.projectOpenBehavior` | `"Interactive"`, `"Open"` or `"Cancel"` | `"Interactive"` | What happens after a project or module is created. |
-
-### Per-project settings
+`maven.executable.*`, read per project.
 
 | Key | Type | Default | Effect |
 |---|---|---|---|
 | `maven.executable.path` | string | `""` | Path of the Maven executable, for example `/usr/local/bin/mvn`. |
 | `maven.executable.preferMavenWrapper` | boolean | `true` | Use the Maven wrapper of the project when it has one. |
-| `maven.executable.options` | string or array of string | `""` | Options added to every Maven command, for example `-o -T 1C`. |
-| `maven.terminal.customEnv` | array of objects | `[]` | Environment variables for Maven, in the terminal and in background runs. |
-| `maven.terminal.favorites` | array of objects | two entries | Favorite Maven command lines, listed in the explorer and by the favorites command. |
-| `maven.explorer.projectName` | string | `"${project.name}"` | The label of a project in the explorer. |
-| `maven.excludedFolders` | array of string | five globs | Folders that the search for poms skips. |
-| `maven.pomfile.prefetchEffectivePom` | boolean | `true` | Compute the effective poms of a build in the background when its projects load. |
-| `maven.outputDirectory` | string | `""` | Folder for the files Maven generates for a project. Empty uses the coc storage folder of the extension. |
-
-The sections below explain the settings that need more than one line.
-
-### The Maven executable
+| `maven.executable.options` | string or array of string | `""` | Options added to every Maven command line, for example `-o -T 1C`. |
 
 The extension takes the first Maven it finds:
 
@@ -156,29 +128,43 @@ contain spaces, or an array. These two are equal:
 }
 ```
 
-### The settings file
+All three keys apply to the next Maven run.
 
-`maven.settingsFile` is passed as `-s <file>` to every Maven run, in the
-terminal and in the background, for every project and whichever executable
-the lookup above picks. The extension also reads `<localRepository>` from it
-to find the local repository; without the setting it reads
-`~/.m2/settings.xml`, and without a `<localRepository>` it uses
-`~/.m2/repository`. A change reloads the local repository location.
+### Settings file
 
-Keep `-s` out of `maven.executable.options`: Maven would get `-s` twice,
-and the local repository lookup only reads `maven.settingsFile`.
+Read for the editor.
 
-### Environment variables
+| Key | Type | Default | Effect |
+|---|---|---|---|
+| `maven.settingsFile` | string or null | `null` | The Maven `settings.xml`, passed as `-s` to every Maven run, and read for `<localRepository>`. |
+
+The file goes as `-s <file>` to every Maven run, in the terminal and in the
+background, whichever executable the lookup above picks. The extension also
+reads `<localRepository>` from it to find the local repository; without the
+setting it reads `~/.m2/settings.xml`, and without a `<localRepository>` it
+uses `~/.m2/repository`. A change looks up the local repository again the same
+way, and the output channel `maven` logs where it is.
+
+Keep `-s` out of `maven.executable.options`: Maven would get `-s` twice, and
+the local repository lookup only reads `maven.settingsFile`.
+
+### Terminal and environment
+
+`maven.terminal.*`, read per project.
+
+| Key | Type | Default | Effect |
+|---|---|---|---|
+| `maven.terminal.customEnv` | array of objects | `[]` | Environment variables for Maven, in the terminal and in background runs. |
+| `maven.terminal.favorites` | array of objects | two entries | Favorite Maven command lines, listed in the explorer and by the favorites command. |
 
 Each `maven.terminal.customEnv` object has a non-empty string
 `environmentVariable` and a string `value`. A name that is not made of
-letters, digits and underscores, or that starts with a digit, is skipped and
-logged in the output channel `maven`. The terminal sets the variables in the
+letters, digits and underscores, or that starts with a digit, is skipped, in
+the terminal and in background runs alike, and logged once in the output
+channel `maven`. The terminal sets the variables before every command, in the
 syntax of the shell in `$SHELL`: PowerShell, `cmd.exe`, `fish` and POSIX
 shells, including WSL, where paths are converted with `wslpath`. A change
 closes the Maven terminals.
-
-### Favorites
 
 Each favorite has the string `command` (goals and options, without `mvn`),
 the optional string `alias`, the label in the lists, and the optional boolean
@@ -200,11 +186,19 @@ favorites:
 }
 ```
 
-The command that adds a favorite writes to `.vim/coc-settings.json` of the
-workspace folder, which it creates when needed; that list replaces the user
-list for the folder.
+The command that adds a favorite takes the list in effect for coc's current
+workspace root, adds the new entry and writes the result to the
+`.vim/coc-settings.json` of that workspace folder, which it creates when
+needed. A change refreshes the explorer.
 
-### The explorer and project discovery
+### Explorer
+
+`maven.explorer.*`: `view` is read for the editor, `projectName` per project.
+
+| Key | Type | Default | Effect |
+|---|---|---|---|
+| `maven.explorer.view` | `"flat"` or `"hierarchical"` | `"hierarchical"` | The explorer lists all projects on one level, or nests modules below the project that declares them. |
+| `maven.explorer.projectName` | string, one of five templates | `"${project.name}"` | The label of a project in the explorer. |
 
 `maven.explorer.projectName` takes one of `${project.name}`,
 `${project.artifactId}`, `${project.artifactId}-${project.version}`,
@@ -212,7 +206,41 @@ list for the folder.
 `${project.groupId}.${project.artifactId}-${project.version}`. A project
 without a `<name>` shows its artifactId for `${project.name}`.
 
-The default of `maven.excludedFolders`:
+A change of either key refreshes the explorer. The commands that switch the
+explorer layout write `maven.explorer.view` to your user `coc-settings.json`.
+
+### Pom files
+
+`maven.pomfile.*`: `prefetchEffectivePom` is read per project, the others for
+the editor.
+
+| Key | Type | Default | Effect |
+|---|---|---|---|
+| `maven.pomfile.globPattern` | string | `"**/pom.xml"` | Finds the poms of each workspace folder, and the poms the file watcher observes. |
+| `maven.pomfile.prefetchEffectivePom` | boolean | `true` | Compute the effective poms of a build in the background when its projects load. |
+| `maven.pomfile.autoUpdateEffectivePOM` | boolean | `true` | Recompute the effective pom right after its `pom.xml` changes on disk; off, on its next use. |
+
+A change of `maven.pomfile.globPattern` refreshes the explorer, which searches
+the poms again with the new pattern, and the file watcher observes the new
+pattern from then on. The pattern does not decide which buffers get
+the pom features: those attach to the filetype `xml` with the pattern
+`**/{pom.xml,*.pom}`.
+
+`maven.pomfile.prefetchEffectivePom` covers the root poms and the modules they
+list, so hover and the explorer have them ready. Any other `pom.xml` inside a
+project, such as test inputs or samples, computes on first use. It applies to
+projects that load after the change; `maven.pomfile.autoUpdateEffectivePOM`
+applies to the next change of a pom.
+
+### Project discovery
+
+Read per workspace folder.
+
+| Key | Type | Default | Effect |
+|---|---|---|---|
+| `maven.excludedFolders` | array of string | five globs | Folders that the search for poms skips. |
+
+The default:
 
 ```json
 {
@@ -226,28 +254,52 @@ The default of `maven.excludedFolders`:
 }
 ```
 
-`maven.pomfile.globPattern` does not decide which buffers get the pom
-features: those attach to the filetype `xml` with the pattern
-`**/{pom.xml,*.pom}`.
+A change refreshes the explorer, which searches the poms again without the
+excluded folders.
 
-`maven.pomfile.prefetchEffectivePom` covers the root poms and the modules they
-list, so hover and the explorer have them ready. Any other `pom.xml` inside a
-project, such as test inputs or samples, computes on first use.
+### Pom editing
 
-The explorer refreshes when `maven.explorer.view`,
-`maven.pomfile.globPattern`, `maven.explorer.projectName` or
-`maven.terminal.favorites` changes. The commands that switch the explorer
-layout write `maven.explorer.view` to your user `coc-settings.json`.
+Read for the editor.
+
+| Key | Type | Default | Effect |
+|---|---|---|---|
+| `maven.completion.gavEnabled` | boolean | `true` | Look up `groupId`, `artifactId` and `version` candidates on Maven Central. |
+| `maven.dependency.enableConflictDiagnostics` | boolean | `true` | Report dependency conflicts as warnings, and compute the dependency trees for them in the background. |
+
+`maven.completion.gavEnabled` set to `false` turns off only the Maven Central
+lookups, from the next completion on; the candidates from the Java language
+server index and the local repository stay.
+
+`maven.dependency.enableConflictDiagnostics` set to `false` clears every
+reported conflict right away and stops computing dependency trees in the
+background; set back to `true`, it reports the conflicts of the open poms
+again, and of the others when they are opened.
+
+### New projects
+
+Read for the editor.
+
+| Key | Type | Default | Effect |
+|---|---|---|---|
+| `maven.projectOpenBehavior` | `"Interactive"`, `"Open"` or `"Cancel"` | `"Interactive"` | What happens after a project or module is created. |
+
+`"Open"` opens the folder of the new project, `"Cancel"` does nothing, and
+`"Interactive"` (and any other value) asks.
 
 ### Generated files
+
+Read per project.
+
+| Key | Type | Default | Effect |
+|---|---|---|---|
+| `maven.outputDirectory` | string | `""` | Folder for the files Maven generates for a project. Empty uses the coc storage folder of the extension. |
 
 The files Maven generates for a project stay on disk under readable names, so
 other tools can use them too. They go to the folder that
 `maven.outputDirectory` names. Empty, the default, is a folder in the coc
-storage folder of the extension named after the md5 of the pom path, for
-example `coc-maven-data/0176eccb65246d7b089fcc864b370a8a/`. Another tool finds
-it by hashing the absolute path of the pom. `"target/generated"` puts the
-files next to the pom of each project instead:
+storage folder of the extension named after the md5 of the absolute path of
+the pom, for example `coc-maven-data/0176eccb65246d7b089fcc864b370a8a/`.
+`"target/generated"` puts the files next to the pom of each project instead:
 
 ```
 my-app/target/generated/
@@ -275,51 +327,45 @@ overwrite each other. One folder per project below the workspace folder:
 }
 ```
 
-`:CocCommand maven.project.generatedResources` lists the generated files of a
-project and opens the one you pick. See `:help coc-maven-generated`.
-
-### Pom editing and new projects
-
-`maven.completion.gavEnabled` set to `false` turns off only the Maven Central
-lookups; the candidates from the Java language server index and the local
-repository stay. `maven.dependency.enableConflictDiagnostics` set to `false`
-also clears the reported conflicts.
-
-After a project or module is created, `maven.projectOpenBehavior` `"Open"`
-opens its folder, `"Cancel"` does nothing, and `"Interactive"` (and any other
-value) asks.
+A change applies to the next result that is computed; the files in the old
+folder stay where they are. `:CocCommand maven.project.generatedResources`
+lists the generated files of a project and opens the one you pick. See
+`:help coc-maven-generated`.
 
 ## Files
 
 The extension writes:
 
-- the files Maven generates for a project (effective pom, dependency tree,
-  profiles, plugin descriptions), in `maven.outputDirectory`, by default in
-  the coc storage folder of the extension; see Generated files above;
+- the files Maven generates for a project, in `maven.outputDirectory`; see
+  [Generated files](#generated-files);
 - the command history of each pom, in the coc storage folder of the
   extension;
 - the archetype catalog, when you update it, in the coc storage folder of the
   extension (`:help coc-maven-archetype`);
 - a copy of the artifact index for the artifact searcher, in the coc storage
-  folder of the extension.
+  folder of the extension;
+- a copy of the help page and its tags, in the coc storage folder of the
+  extension, which it adds to `'runtimepath'`.
 
 It edits your poms only through the dependency, module and project commands.
 
 ## Troubleshooting
 
 - **"Maven not found in PATH"**: install Maven or a wrapper, or set
-  `maven.executable.path`; see Configuration for the lookup order.
+  `maven.executable.path`; see [Maven executable](#maven-executable) for the
+  lookup order.
 - **Completion, hover and definition do nothing in a pom**: check
-  `:set filetype?` in the pom buffer. It must be `xml`; see the filetype
-  setup above.
+  `:set filetype?` in the pom buffer. It must be `xml`; see
+  [The filetype of pom.xml](#the-filetype-of-pomxml).
 - **No groupId or artifactId candidates**: Maven Central needs network access
-  and `maven.completion.gavEnabled` on, and the Java language server index needs
-  `coc-java` in standard mode.
+  and `maven.completion.gavEnabled` on, and the Java language server index
+  needs `coc-java` in standard mode.
 - **The explorer is empty**: no `pom.xml` was found; check
   `maven.excludedFolders` and `maven.pomfile.globPattern`.
-- **Maven fails**: open its output with `:CocCommand workspace.showOutput maven`.
-  The channel also shows the local repository and the `JAVA_HOME` set in
-  `maven.terminal.customEnv`.
+- **Maven fails**: open its output with
+  `:CocCommand workspace.showOutput maven`. The channel shows each background
+  command line, the `JAVA_HOME` set in `maven.terminal.customEnv`, and the
+  local repository.
 
 ## Development
 
