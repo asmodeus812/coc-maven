@@ -164,7 +164,8 @@ HISTORY                                                    *coc-maven-history*
 
 coc-maven records every command that runs in the terminal for a pom, with the
 time, in the history of that pom. |coc-maven-command-maven.history| lists
-them, the newest first, and runs the one you pick again.
+them, the newest first, and runs the one you pick again. The history is kept
+in the coc storage folder of the extension and survives a restart.
 
 ------------------------------------------------------------------------------
 MAVEN EXECUTABLE                                        *coc-maven-executable*
@@ -291,6 +292,51 @@ hover and the explorer keep the last valid state and coc-maven warns once: >
 For the tree the message names "Dependency Tree". {reason} is the error that
 Maven reports. Fix the pom and save it to try again.
 
+------------------------------------------------------------------------------
+GENERATED FILES                                         *coc-maven-generated*
+
+The files Maven generates for a project stay on disk under readable names, so
+other tools can read them too. They go to the folder that
+`maven.outputDirectory` names. Empty, the default, is a folder in the coc
+storage folder of the extension named after the md5 of the absolute path of
+the pom, for example `coc-maven-data/0176eccb65246d7b089fcc864b370a8a/`. The
+files in that folder:
+
+    effective-pom.xml       the effective pom
+    dependency-tree.txt     the dependency tree
+    profiles.txt            the profiles, for the profiles in the explorer
+    plugins/{plugin}.txt    the goals of a plugin, from help:describe; the
+                            colons of {groupId}:{artifactId}:{version}
+                            become underscores
+
+Next to the effective pom and the dependency tree, a `.mtime` file records
+the state of the poms they belong to; a result is computed again only after a
+pom changes. With a folder inside `target`, `mvn clean` removes the files;
+they come back on their next use.
+
+A relative `maven.outputDirectory` resolves against the folder of the pom.
+These variables are replaced:
+
+    ${workspaceFolder}      the workspace folder of the pom
+    ${projectDir}           the folder of the pom
+    ${relativeProjectDir}   the folder of the pom, relative to the workspace
+                            folder, `.` for the workspace folder itself
+
+followed by `${env:NAME}`, `${NAME}` and `$NAME` from the environment and a
+leading `~`. `"target/generated"` puts the files next to the pom of each
+project. The setting is read for each pom, so the `.vim/coc-settings.json`
+of a workspace folder can set its own. A path without `${projectDir}` or
+`${relativeProjectDir}` is shared by every project, and their files overwrite
+each other. One folder per project below the workspace folder: >
+    "maven.outputDirectory":
+        "${workspaceFolder}/.coc-maven/${relativeProjectDir}"
+<
+A change applies to the next result that is computed; the files in the old
+folder stay where they are.
+
+|coc-maven-command-maven.project.generatedResources| lists the generated files
+of a project and opens the one you pick.
+
 ==============================================================================
 DEPENDENCIES                                          *coc-maven-dependencies*
 
@@ -415,9 +461,10 @@ maven.explorer.flat                    *coc-maven-command-maven.explorer.flat*
 maven.explorer.hierarchical    *coc-maven-command-maven.explorer.hierarchical*
 
 The two commands switch the explorer to the flat or to the hierarchical
-layout, see |coc-maven-explorer-nodes|. The choice is written to `maven.view`
-in your user `coc-settings.json`, so it holds for all projects. While the
-explorer is not open, a message says the layout applies when it opens.
+layout, see |coc-maven-explorer-nodes|. The choice is written to
+`maven.explorer.view` in your user `coc-settings.json`, so it holds for all
+projects. While the explorer is not open, a message says the layout applies
+when it opens.
 
 ------------------------------------------------------------------------------
 GOAL COMMANDS                                       *coc-maven-commands-goals*
@@ -509,6 +556,15 @@ maven.project.openPom {project}?     *coc-maven-command-maven.project.openPom*
 Opens the `pom.xml` of the project, or moves the cursor to the window that
 already shows it.
 
+maven.project.generatedResources {project}?
+                          *coc-maven-command-maven.project.generatedResources*
+
+Lists the generated files of the project that exist, see
+|coc-maven-generated|: `effective-pom.xml`, `dependency-tree.txt`,
+`profiles.txt` and the plugin descriptions under `plugins/`, and opens the one
+you pick. Without generated files, a message names the folder Maven writes
+them to on first use.
+
                         *coc-maven-command-maven.project.configuration.update*
 maven.project.configuration.update
 
@@ -544,5 +600,7 @@ Downloads the latest archetype catalog from Maven Central for the list of
 |coc-maven-archetype-project|. The download can take a while; the progress
 message reads "Updating archetype catalog...", success shows "Archetype
 catalog updated" and a failure shows "Unable to update catalog {reason}".
+The catalog goes to the coc storage folder of the extension and is used from
+then on in place of the catalog that ships with the extension.
 
  vim:tw=78:ts=8:sw=4:sts=4:et:ft=help:norl:
