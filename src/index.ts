@@ -415,7 +415,21 @@ function inheritingProjects(pomPath: string, seen: Set<string> = new Set([path.r
     return children.flatMap((child) => [child, ...inheritingProjects(child.pomPath, seen)]);
 }
 
+// the watcher of the poms follows maven.pomfile.globPattern, a change of the pattern replaces it
+let pomFileWatcher: coc.Disposable | undefined;
+
 function registerPomFileWatcher(context: coc.ExtensionContext): void {
+    pomFileWatcher = createPomFileWatcher();
+    context.subscriptions.push(coc.Disposable.create(() => pomFileWatcher?.dispose()));
+}
+
+function replacePomFileWatcher(): void {
+    pomFileWatcher?.dispose();
+    pomFileWatcher = createPomFileWatcher();
+}
+
+function createPomFileWatcher(): coc.Disposable {
+    const disposables: coc.Disposable[] = [];
     const watcher: coc.FileSystemWatcher = coc.workspace.createFileSystemWatcher(Settings.Pomfile.globPattern());
     // a burst of changes to one pom (autosave, :wa, a formatter) refreshes it once, after it stayed unchanged for a while
     const pendingRefreshes = new Map<string, NodeJS.Timer>();
@@ -428,7 +442,7 @@ function registerPomFileWatcher(context: coc.ExtensionContext): void {
             }
         },
         null,
-        context.subscriptions
+        disposables
     );
     watcher.onDidChange(
         (e: Uri) => {
@@ -440,11 +454,14 @@ function registerPomFileWatcher(context: coc.ExtensionContext): void {
             pendingRefreshes.set(e.fsPath, timer);
         },
         null,
-        context.subscriptions
+        disposables
     );
-    context.subscriptions.push(coc.Disposable.create(() => pendingRefreshes.forEach((timer) => clearTimeout(timer))));
-    watcher.onDidDelete((e: Uri) => MavenExplorerProvider.getInstance().removeProject(e.fsPath), null, context.subscriptions);
-    context.subscriptions.push(watcher);
+    watcher.onDidDelete((e: Uri) => MavenExplorerProvider.getInstance().removeProject(e.fsPath), null, disposables);
+    disposables.push(
+        coc.Disposable.create(() => pendingRefreshes.forEach((timer) => clearTimeout(timer))),
+        watcher
+    );
+    return coc.Disposable.create(() => disposables.forEach((disposable) => disposable.dispose()));
 }
 
 function registerConfigChangeListener(context: coc.ExtensionContext): void {
@@ -452,6 +469,9 @@ function registerConfigChangeListener(context: coc.ExtensionContext): void {
         // close all terminals with outdated JAVA related environment variables
         if (e.affectsConfiguration("maven.terminal.customEnv")) {
             mavenTerminal.dispose();
+        }
+        if (e.affectsConfiguration("maven.pomfile.globPattern")) {
+            replacePomFileWatcher();
         }
         if (
             e.affectsConfiguration("maven.explorer.view") ||
