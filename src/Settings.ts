@@ -50,6 +50,10 @@ export class Settings {
         return _getMavenSection<string>("settingsFile");
     }
 
+    public static outputDirectory(resourceOrFilepath?: Uri | string): string | undefined {
+        return _getMavenSection<string>("outputDirectory", resourceOrFilepath);
+    }
+
     public static readonly External = class {
         public static defaultWindowsShell(): string | undefined {
             return workspace.getConfiguration("terminal").get<string>("integrated.shell.windows");

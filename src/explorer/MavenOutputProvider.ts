@@ -3,20 +3,21 @@
 
 import * as coc from "coc.nvim";
 import * as fse from "fs-extra";
-import { mavenOutputPath, readFileIfExists } from "../utils/mavenUtils";
+import * as path from "path";
+import { readFileIfExists } from "../utils/mavenUtils";
+import { mavenOutputPath, mavenStatePath } from "../utils/outputPaths";
 
 /**
  * Provides one maven output of a project, such as its effective pom or its dependency tree, as the model parsed from its
- * output file. The file is written again only after the pom changed, the modification time of the pom it belongs to is
- * stored next to it.
+ * output file in the output folder of the project, see outputDirectory. The file is written again only after the pom
+ * changed, the modification times of the poms it belongs to are stored next to it, in {name}.mtime. Both paths are
+ * resolved on every load, so a change of maven.outputDirectory takes effect with the next load.
  *
  * Readers always get the last valid model. Only loading runs maven: the first read does it once, a change of the pom
  * invalidates the model so that the next read loads again. A failed attempt keeps the last valid
  * model and is reported once, the next attempt waits for the next change of the pom.
  */
 export class MavenOutputProvider<T> {
-    private readonly outputPath: string;
-    private readonly mtimePath: string;
     private current?: T;
     private changeCounter = 0;
     private latestChange = -1;
@@ -25,16 +26,13 @@ export class MavenOutputProvider<T> {
 
     constructor(
         private readonly pomPath: string,
-        name: string,
+        private readonly name: string,
         private readonly label: string,
         private readonly run: (pomPath: string, token: coc.CancellationToken) => Promise<string | undefined>,
         private readonly parse: (pomPath: string, text: string) => Promise<T>,
         // the poms the output depends on, the pom itself and the parents it inherits from, their mtimes key the cache
         private readonly sourcePaths: () => string[] = () => [pomPath]
-    ) {
-        this.outputPath = mavenOutputPath(pomPath, name);
-        this.mtimePath = `${this.outputPath}.mtime`;
-    }
+    ) {}
 
     // the pom changed, the next read loads the model again, a maven run for the previous state is killed
     public invalidate(): void {
@@ -68,7 +66,8 @@ export class MavenOutputProvider<T> {
 
     private async loadState(mtime: string): Promise<void> {
         // the output file of this state of the pom, a missing or damaged one is a miss
-        const cached: T | undefined = (await readFileIfExists(this.mtimePath)) === mtime ? await this.parseCached() : undefined;
+        const statePath: string = mavenStatePath(this.pomPath, this.name);
+        const cached: T | undefined = (await readFileIfExists(statePath)) === mtime ? await this.parseCached() : undefined;
         if (cached !== undefined) {
             this.current = cached;
             return;
@@ -93,13 +92,14 @@ export class MavenOutputProvider<T> {
         }
         if (text !== undefined) {
             // the written file belongs to this state of the pom
-            await fse.writeFile(this.mtimePath, mtime);
+            await fse.ensureDir(path.dirname(statePath));
+            await fse.writeFile(statePath, mtime);
             this.current = await this.parse(this.pomPath, text);
         }
     }
 
     private async parseCached(): Promise<T | undefined> {
-        const text: string | undefined = await readFileIfExists(this.outputPath);
+        const text: string | undefined = await readFileIfExists(mavenOutputPath(this.pomPath, this.name));
         try {
             return text === undefined ? undefined : await this.parse(this.pomPath, text);
         } catch {

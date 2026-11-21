@@ -6,7 +6,7 @@ import * as fs from "fs";
 import * as _ from "lodash";
 import * as path from "path";
 import { MavenProjectManager } from "../../project/MavenProjectManager";
-import { rawDependencyTree, rawEffectivePom, rawProfileList } from "../../utils/mavenUtils";
+import { DEPENDENCY_TREE_FILE, EFFECTIVE_POM_FILE, rawDependencyTree, rawEffectivePom, rawProfileList } from "../../utils/mavenUtils";
 import { parseDependencyTree } from "../../utils/parseDependencyTree";
 import { parseEffectivePom } from "../../utils/parseEffectivePom";
 import { Settings } from "../../Settings";
@@ -36,12 +36,12 @@ export class MavenProject implements ITreeItem {
 
     constructor(pomPath: string) {
         this.pomPath = pomPath;
-        this.effectivePomProvider = new MavenOutputProvider(pomPath, "epom", "Effective POM", rawEffectivePom, parseEffectivePom, () =>
+        this.effectivePomProvider = new MavenOutputProvider(pomPath, EFFECTIVE_POM_FILE, "Effective POM", rawEffectivePom, parseEffectivePom, () =>
             this.sourcePomPaths()
         );
         this.dependencyTreeProvider = new MavenOutputProvider(
             pomPath,
-            "deps.txt",
+            DEPENDENCY_TREE_FILE,
             "Dependency Tree",
             rawDependencyTree,
             parseDependencyTree,

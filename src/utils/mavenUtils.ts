@@ -5,20 +5,25 @@ import * as child_process from "child_process";
 import * as coc from "coc.nvim";
 import expandHome from "expand-home-dir";
 import * as fse from "fs-extra";
-import md5 from "md5";
 import * as path from "path";
 import { getMavenExecutableOptionArgs } from "../archetype/archetypeCommand";
 import { mavenOutputChannel } from "../mavenOutputChannel";
 import { mavenTerminal } from "../mavenTerminal";
 import { MavenProjectManager } from "../project/MavenProjectManager";
 import { Settings } from "../Settings";
-import { getPathToExtensionRoot, getPathToTempFolder, getPathToWorkspaceStorage } from "./contextUtils";
+import { getPathToExtensionRoot } from "./contextUtils";
 import { updateLRUCommands } from "./historyUtils";
+import { mavenOutputPath, pluginDescriptionPath } from "./outputPaths";
 import { mergeEnvironment, resolveExecutablePath, spawnExecutable } from "./spawnExecutable";
 
 // calculate dependency graph
 const GOAL_DEPENDENCY_GRAPH = "com.github.ferstl:depgraph-maven-plugin:4.0.3:graph";
 const OPTIONS_DEPENDENCY_GRAPH = ["-DgraphFormat=text", "-DshowDuplicates", "-DshowConflicts", "-DshowVersions", "-DshowGroupIds"];
+
+// the file names in the output folder of a project, see outputDirectory
+export const EFFECTIVE_POM_FILE = "effective-pom.xml";
+export const DEPENDENCY_TREE_FILE = "dependency-tree.txt";
+export const PROFILES_FILE = "profiles.txt";
 
 /**
  * Runs maven to write the effective pom of a project.
@@ -28,7 +33,7 @@ const OPTIONS_DEPENDENCY_GRAPH = ["-DgraphFormat=text", "-DshowDuplicates", "-Ds
  * @returns full content of the effective pom
  */
 export async function rawEffectivePom(pomPath: string, token?: coc.CancellationToken): Promise<string | undefined> {
-    const outputPath: string = mavenOutputPath(pomPath, "epom");
+    const outputPath: string = await ensureOutputFolder(mavenOutputPath(pomPath, EFFECTIVE_POM_FILE));
     await executeInBackground({ pomFile: pomPath, args: ["-B", `-Doutput=${outputPath}`, "help:effective-pom"], token });
     return await readFileIfExists(outputPath);
 }
@@ -41,7 +46,7 @@ export async function rawEffectivePom(pomPath: string, token?: coc.CancellationT
  * @returns the tree as text
  */
 export async function rawDependencyTree(pomPath: string, token?: coc.CancellationToken): Promise<string | undefined> {
-    const outputPath: string = mavenOutputPath(pomPath, "deps.txt");
+    const outputPath: string = await ensureOutputFolder(mavenOutputPath(pomPath, DEPENDENCY_TREE_FILE));
     await executeInBackground({
         pomFile: pomPath,
         token,
@@ -57,15 +62,14 @@ export async function rawDependencyTree(pomPath: string, token?: coc.Cancellatio
     return await readFileIfExists(outputPath);
 }
 
-/**
- * Path of a maven output file of a pom, in the storage of the extension.
- */
-export function mavenOutputPath(pomPath: string, name: string): string {
-    return `${getTempFolder(pomPath)}.${name}`;
+// the output folder of a project may not exist yet, maven writes the file into it
+async function ensureOutputFolder(outputPath: string): Promise<string> {
+    await fse.ensureDir(path.dirname(outputPath));
+    return outputPath;
 }
 
 export async function pluginDescription(pluginId: string, pomPath: string): Promise<string | undefined> {
-    const outputPath: string = getTempFolder(pluginId);
+    const outputPath: string = await ensureOutputFolder(pluginDescriptionPath(pomPath, pluginId));
     // For MacOSX, add "-Dapple.awt.UIElement=true" to prevent showing icons in dock
     await executeInBackground({
         pomFile: pomPath,
@@ -75,13 +79,12 @@ export async function pluginDescription(pluginId: string, pomPath: string): Prom
 }
 
 export async function rawProfileList(pomPath: string): Promise<string | undefined> {
-    const outputPath: string = getTempFolder(pomPath);
-    const profileListPath = `${outputPath}.profiles.txt`;
+    const outputPath: string = await ensureOutputFolder(mavenOutputPath(pomPath, PROFILES_FILE));
     await executeInBackground({
         pomFile: pomPath,
-        args: ["-B", `-Doutput=${profileListPath}`, "help:all-profiles"]
+        args: ["-B", `-Doutput=${outputPath}`, "help:all-profiles"]
     });
-    return await readFileIfExists(profileListPath);
+    return await readFileIfExists(outputPath);
 }
 
 /**
@@ -336,11 +339,6 @@ export async function readFileIfExists(filepath: string): Promise<string | undef
         return (await fse.readFile(filepath)).toString();
     }
     return undefined;
-}
-
-function getTempFolder(identifier: string): string {
-    const outputPath: string | undefined = getPathToWorkspaceStorage(md5(identifier));
-    return outputPath || getPathToTempFolder(md5(identifier));
 }
 
 async function promptToSettingMavenExecutable(): Promise<void> {

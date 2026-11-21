@@ -65,6 +65,12 @@
                     "description": "Path to a custom Maven settings.xml file to use (overrides the default settings).",
                     "scope": "machine"
                 },
+                "maven.outputDirectory": {
+                    "type": "string",
+                    "default": "",
+                    "description": "Folder for the files Maven generates for a project: effective-pom.xml, dependency-tree.txt, profiles.txt and plugins/. Empty uses a folder named after the md5 of the pom path in the coc storage folder of the extension. A relative path resolves against the folder of the pom, for example target/generated. ${workspaceFolder}, ${projectDir}, ${relativeProjectDir}, environment variables and a leading ~ are expanded.",
+                    "scope": "resource"
+                },
                 "maven.excludedFolders": {
                     "type": "array",
                     "default": [
