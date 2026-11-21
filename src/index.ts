@@ -476,6 +476,7 @@ function registerConfigChangeListener(context: coc.ExtensionContext): void {
         if (
             e.affectsConfiguration("maven.explorer.view") ||
             e.affectsConfiguration("maven.pomfile.globPattern") ||
+            e.affectsConfiguration("maven.excludedFolders") ||
             e.affectsConfiguration("maven.explorer.projectName") ||
             e.affectsConfiguration("maven.terminal.favorites")
         ) {
