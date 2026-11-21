@@ -31,28 +31,27 @@ export async function loadPackageInfo(context: ExtensionContext): Promise<void> 
     TEMP_FOLDER_PER_USER = path.join(os.tmpdir(), `${EXTENSION_NAME}-${os.userInfo().username}`);
 
     await loadMavenSettingsFilePath();
-
-    if (!MAVEN_LOCAL_REPOSITORY) {
-        MAVEN_LOCAL_REPOSITORY = path.join(os.homedir(), ".m2", "repository");
-    }
 }
 
+/**
+ * Finds the local repository: the <localRepository> of maven.settingsFile, or of ~/.m2/settings.xml without the
+ * setting, and ~/.m2/repository when the file declares none or cannot be read. Every call starts from that default,
+ * so a change to a settings file without <localRepository> does not keep the location of the previous one.
+ */
 export async function loadMavenSettingsFilePath(): Promise<void> {
-    // find Maven Local Repository
+    let localRepository: string = path.join(os.homedir(), ".m2", "repository");
     try {
-        let userSettingsPath: string | undefined = Settings.getSettingsFilePath();
-        if (!userSettingsPath) {
-            userSettingsPath = path.join(os.homedir(), ".m2", "settings.xml");
-        }
+        const userSettingsPath: string = Settings.getSettingsFilePath() || path.join(os.homedir(), ".m2", "settings.xml");
         const userSettings: unknown = await Utils.parseXmlFile(userSettingsPath);
-        const localRepository = _.get(userSettings, "settings.localRepository[0]");
-        if (localRepository) {
-            MAVEN_LOCAL_REPOSITORY = path.resolve(localRepository);
-            mavenOutputChannel.appendLine(`local repository: ${MAVEN_LOCAL_REPOSITORY}`);
+        const declared = _.get(userSettings, "settings.localRepository[0]");
+        if (declared) {
+            localRepository = path.resolve(declared);
         }
     } catch (error) {
         console.warn((error as Error).message);
     }
+    MAVEN_LOCAL_REPOSITORY = localRepository;
+    mavenOutputChannel.appendLine(`local repository: ${MAVEN_LOCAL_REPOSITORY}`);
 }
 
 export function getMavenLocalRepository(): string {
